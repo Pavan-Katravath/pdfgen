@@ -34,12 +34,9 @@ async function s3FSRFileOperations(type, Key, Body = '', call_no = '', path = ''
         return readResult.Body;
 
       case 'location':
-        const signedUrl = await s3.getSignedUrlPromise('getObject', {
-          ...params,
-          Expires: config.app.presignedUrlExpire
-        });
+        const locationData = await s3.getObject(params).promise();
         logger.logS3Operation('generate-url', Key, 'SUCCESS');
-        return signedUrl;
+        return locationData.ETag;
 
       default:
         throw new Error(`Unsupported operation type: ${type}`);
