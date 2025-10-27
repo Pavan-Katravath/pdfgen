@@ -5,21 +5,21 @@ frameworkVersion: '3'
 provider:
   name: aws
   runtime: nodejs18.x
-  region: ${env:AWS_REGION, 'us-east-1'}
+  region: ${env:AWS_REGION, ''}
   stage: ${env:STAGE, 'local'}
   timeout: 300
   memorySize: 1024
   
   environment:
-    S3_BUCKET: ${env:S3_BUCKET, 'vertiv'}
-    AWS_REGION: ${env:AWS_REGION, 'us-east-1'}
-    AWS_ACCESS_KEY_ID: ${env:AWS_ACCESS_KEY_ID, 'OdJTvIf88W6W4HNm5wn5'}
-    AWS_SECRET_ACCESS_KEY: ${env:AWS_SECRET_ACCESS_KEY, 'YLYwa9qw3Lnzrp9bmQF4IOXhztdHdMo2ZbqtE0W4'}
-    S3_ENDPOINT_URL: ${env:S3_ENDPOINT_URL, 'http://localhost:9000'}
-    S3_FORCE_PATH_STYLE: ${env:S3_FORCE_PATH_STYLE, 'true'}
-    FSR_REATTEMPT_TIMEOUT: ${env:FSR_REATTEMPT_TIMEOUT, '5000'}
-    PRESIGNED_URL_EXPIRE: ${env:PRESIGNED_URL_EXPIRE, '3600'}
-    ENABLE_VERTIV_LOGS: ${env:ENABLE_VERTIV_LOGS, 'false'}
+    S3_BUCKET: ${env:S3_BUCKET, ''}
+    AWS_REGION: ${env:AWS_REGION, ''}
+    AWS_ACCESS_KEY_ID: ${env:AWS_ACCESS_KEY_ID, ''}
+    AWS_SECRET_ACCESS_KEY: ${env:AWS_SECRET_ACCESS_KEY, ''}
+    S3_ENDPOINT_URL: ${env:S3_ENDPOINT_URL, ''}
+    S3_FORCE_PATH_STYLE: ${env:S3_FORCE_PATH_STYLE, ''}
+    FSR_REATTEMPT_TIMEOUT: ${env:FSR_REATTEMPT_TIMEOUT, ''}
+    PRESIGNED_URL_EXPIRE: ${env:PRESIGNED_URL_EXPIRE, ''}
+    ENABLE_VERTIV_LOGS: ${env:ENABLE_VERTIV_LOGS, ''}
   
   iamRoleStatements:
     - Effect: Allow
@@ -28,7 +28,7 @@ provider:
         - s3:PutObject
         - s3:DeleteObject
         - s3:GetObjectVersion
-      Resource: "arn:aws:s3:::${env:S3_BUCKET, 'vertiv'}/*"
+      Resource: "arn:aws:s3:::${env:S3_BUCKET, ''}/*"
     - Effect: Allow
       Action:
         - logs:CreateLogGroup
