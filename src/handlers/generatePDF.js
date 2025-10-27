@@ -15,7 +15,12 @@ const { sleep, validateRequiredParams } = require('../utils/constants');
 
 // Use regular puppeteer for local development
 let puppeteerInstance = puppeteer;
-if (process.env.NODE_ENV === 'local' || process.env.STAGE === 'dev') {
+const isLocalEnvironment = process.env.NODE_ENV === 'local' || 
+                          process.env.STAGE === 'dev' || 
+                          process.env.STAGE === 'local' ||
+                          !process.env.AWS_LAMBDA_FUNCTION_NAME;
+
+if (isLocalEnvironment) {
   try {
     puppeteerInstance = require('puppeteer');
   } catch (e) {
@@ -49,7 +54,14 @@ module.exports.handler = async (event) => {
     // Configure Puppeteer for local vs Lambda environment
     let browserConfig;
     console.log('Environment check:', { NODE_ENV: process.env.NODE_ENV, STAGE: process.env.STAGE });
-    if (process.env.NODE_ENV === 'local' || process.env.STAGE === 'dev') {
+    
+    // Check if we're running locally (not in AWS Lambda)
+    const isLocalEnvironment = process.env.NODE_ENV === 'local' || 
+                              process.env.STAGE === 'dev' || 
+                              process.env.STAGE === 'local' ||
+                              !process.env.AWS_LAMBDA_FUNCTION_NAME;
+    
+    if (isLocalEnvironment) {
       // Local development - use system Chrome or install puppeteer
       browserConfig = {
         headless: true,
@@ -75,7 +87,8 @@ module.exports.handler = async (event) => {
         '/usr/bin/chromium-browser',
         '/usr/bin/chromium',
         '/Applications/Chromium.app/Contents/MacOS/Chromium',
-        '/opt/homebrew/Caskroom/chromium/latest/chrome-mac/Chromium.app/Contents/MacOS/Chromium'
+        '/opt/homebrew/Caskroom/chromium/latest/chrome-mac/Chromium.app/Contents/MacOS/Chromium',
+        '/opt/homebrew/Caskroom/chromium/latest/chromium.wrapper.sh'
       ];
       
       let chromeFound = false;

@@ -8,8 +8,8 @@ class TemplateLoader {
     this.loadTemplates();
   }
 
-  loadTemplates() {
-    const templateFiles = ['dpg.html', 'thermal.html', 'dcps.html'];
+      loadTemplates() {
+        const templateFiles = ['dpg.html', 'thermal.html', 'dcps.html', 'onepmFSR.html', 'onepmFSRChild.html'];
     
     templateFiles.forEach(file => {
       const templateName = file.replace('.html', '');
@@ -65,6 +65,14 @@ class TemplateLoader {
     switch (templateName) {
       case 'thermal':
         return [...commonElements, 'serviceType', 'observation', 'workDone', 'recommendation'];
+      case 'dpg':
+        return [...commonElements, 'productModel', 'serialNumber'];
+      case 'dcps':
+        return [...commonElements, 'siteId', 'productModel'];
+      case 'onepmFSR':
+        return [...commonElements, 'serviceType', 'assessment', 'productsCovered'];
+      case 'onepmFSRChild':
+        return [...commonElements, 'serviceType', 'productModel', 'observation', 'workDone', 'recommendation'];
       default:
         return commonElements;
     }

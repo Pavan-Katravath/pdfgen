@@ -8,3 +8,12 @@ node_modules
 *.sh
 
 .cursor
+
+.github
+coverage
+cypress
+
+tests
+
+cypress.config.js
+jest.config.js

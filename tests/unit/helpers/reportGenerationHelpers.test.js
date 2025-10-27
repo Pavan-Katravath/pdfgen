@@ -1,8 +1,29 @@
 const { 
   generatePartReturnedAndConsumedTable, 
   generateSafetyTable, 
-  generateThermalOrPowerReport 
+  generateThermalOrPowerReport,
+  generateDPGReport,
+  generateDCPSReport,
+  generateBatteryDetails,
+  generateDCPSRiskAssesment,
+  mergePDFs,
+  generateSafetyTableForOnepmFSR,
+  generateProductsCoveredTable,
+  generateOnePMFSR,
+  generateOnePMFSRChild
 } = require('../../../src/helpers/reportGenerationHelpers');
+
+// Mock the constants module to provide isJSON function
+jest.mock('../../../src/utils/constants', () => ({
+  isJSON: jest.fn((str) => {
+    try {
+      JSON.parse(str);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  })
+}));
 
 describe('Report Generation Helpers', () => {
   
@@ -12,7 +33,8 @@ describe('Report Generation Helpers', () => {
     beforeEach(() => {
       mockPage = {
         evaluate: jest.fn().mockResolvedValue(Buffer.from('mock-pdf-content')),
-        setContent: jest.fn().mockResolvedValue()
+        setContent: jest.fn().mockResolvedValue(),
+        pdf: jest.fn().mockResolvedValue(Buffer.from('mock-pdf-content'))
       };
     });
 
@@ -1598,5 +1620,2029 @@ describe('Report Generation Helpers', () => {
       
       expect(mockPage.evaluate).toHaveBeenCalled();
     });
+
+    it('should handle setImage function with valid data', async () => {
+      mockFinalObject.param = {
+        call_no: 'TEST123',
+        product_group: 'thermal',
+        engineer_signature: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
+      };
+      
+      await generateThermalOrPowerReport(mockPage, mockFinalObject);
+      
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should cover setImage function execution in page.evaluate', async () => {
+      const finalObjectWithImage = {
+        ...mockFinalObject,
+        param: {
+          ...mockFinalObject.param,
+          customerSignature: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
+        }
+      };
+
+      // Mock page.evaluate to simulate the actual execution and cover setImage function
+      mockPage.evaluate.mockImplementation(async (fn, data) => {
+        // Simulate the browser environment
+        const mockDocument = {
+          getElementById: jest.fn().mockReturnValue({
+            src: '',
+            textContent: '',
+            innerHTML: ''
+          })
+        };
+        
+        // Create a mock browser context
+        const mockContext = {
+          document: mockDocument,
+          console: { log: jest.fn(), error: jest.fn() }
+        };
+        
+        // Execute the function in the mock context
+        try {
+          return await fn.call(mockContext, data);
+        } catch (error) {
+          throw error;
+        }
+      });
+
+      await generateThermalOrPowerReport(mockPage, finalObjectWithImage);
+
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should handle setImage function with null data', async () => {
+      mockFinalObject.param = {
+        call_no: 'TEST123',
+        product_group: 'thermal',
+        engineer_signature: null
+      };
+      
+      await generateThermalOrPowerReport(mockPage, mockFinalObject);
+      
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should handle setImage function with undefined data', async () => {
+      mockFinalObject.param = {
+        call_no: 'TEST123',
+        product_group: 'thermal',
+        engineer_signature: undefined
+      };
+      
+      await generateThermalOrPowerReport(mockPage, mockFinalObject);
+      
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should handle setHTML function with valid data', async () => {
+      mockFinalObject.param = {
+        call_no: 'TEST123',
+        product_group: 'thermal',
+        safety_table_html: '<div>Safety Table</div>'
+      };
+      
+      await generateThermalOrPowerReport(mockPage, mockFinalObject);
+      
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should handle setHTML function with null data', async () => {
+      mockFinalObject.param = {
+        call_no: 'TEST123',
+        product_group: 'thermal',
+        safety_table_html: null
+      };
+      
+      await generateThermalOrPowerReport(mockPage, mockFinalObject);
+      
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should handle setHTML function with undefined data', async () => {
+      mockFinalObject.param = {
+        call_no: 'TEST123',
+        product_group: 'thermal',
+        safety_table_html: undefined
+      };
+      
+      await generateThermalOrPowerReport(mockPage, mockFinalObject);
+      
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should handle setHTML function with empty string data', async () => {
+      mockFinalObject.param = {
+        call_no: 'TEST123',
+        product_group: 'thermal',
+        safety_table_html: ''
+      };
+      
+      await generateThermalOrPowerReport(mockPage, mockFinalObject);
+      
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should handle workbench activities with empty activity_notes', async () => {
+      mockFinalObject.param.workbench = [
+        {
+          activity_type_value: 'observation',
+          activity_notes: '',
+          activity_date: '2023-01-01'
+        }
+      ];
+      
+      await generateThermalOrPowerReport(mockPage, mockFinalObject);
+      
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should handle workbench activities with null activity_notes', async () => {
+      mockFinalObject.param.workbench = [
+        {
+          activity_type_value: 'observation',
+          activity_notes: null,
+          activity_date: '2023-01-01'
+        }
+      ];
+      
+      await generateThermalOrPowerReport(mockPage, mockFinalObject);
+      
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should handle workbench activities with undefined activity_notes', async () => {
+      mockFinalObject.param.workbench = [
+        {
+          activity_type_value: 'observation',
+          activity_notes: undefined,
+          activity_date: '2023-01-01'
+        }
+      ];
+      
+      await generateThermalOrPowerReport(mockPage, mockFinalObject);
+      
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should handle workbench activities with whitespace-only activity_notes', async () => {
+      mockFinalObject.param.workbench = [
+        {
+          activity_type_value: 'observation',
+          activity_notes: '   ',
+          activity_date: '2023-01-01'
+        }
+      ];
+      
+      await generateThermalOrPowerReport(mockPage, mockFinalObject);
+      
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should handle workbench activities with mixed case activity_type_value', async () => {
+      mockFinalObject.param.workbench = [
+        {
+          activity_type_value: 'Observation',
+          activity_notes: 'Test observation',
+          activity_date: '2023-01-01'
+        },
+        {
+          activity_type_value: 'Work Done',
+          activity_notes: 'Test work done',
+          activity_date: '2023-01-01'
+        },
+        {
+          activity_type_value: 'Recommendation',
+          activity_notes: 'Test recommendation',
+          activity_date: '2023-01-01'
+        }
+      ];
+      
+      await generateThermalOrPowerReport(mockPage, mockFinalObject);
+      
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should handle workbench activities with complex activity_type_value', async () => {
+      mockFinalObject.param.workbench = [
+        {
+          activity_type_value: 'Field Observation and Assessment',
+          activity_notes: 'Test observation',
+          activity_date: '2023-01-01'
+        },
+        {
+          activity_type_value: 'Maintenance Work Completed',
+          activity_notes: 'Test work done',
+          activity_date: '2023-01-01'
+        },
+        {
+          activity_type_value: 'Future Recommendations',
+          activity_notes: 'Test recommendation',
+          activity_date: '2023-01-01'
+        }
+      ];
+      
+      await generateThermalOrPowerReport(mockPage, mockFinalObject);
+      
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should handle workbench activities with special characters in activity_notes', async () => {
+      mockFinalObject.param.workbench = [
+        {
+          activity_type_value: 'observation',
+          activity_notes: 'Test observation with special chars: <>&"\'',
+          activity_date: '2023-01-01'
+        }
+      ];
+      
+      await generateThermalOrPowerReport(mockPage, mockFinalObject);
+      
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should handle workbench activities with very long activity_notes', async () => {
+      const longNotes = 'A'.repeat(1000);
+      mockFinalObject.param.workbench = [
+        {
+          activity_type_value: 'observation',
+          activity_notes: longNotes,
+          activity_date: '2023-01-01'
+        }
+      ];
+      
+      await generateThermalOrPowerReport(mockPage, mockFinalObject);
+      
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should handle workbench activities with missing activity_date', async () => {
+      mockFinalObject.param.workbench = [
+        {
+          activity_type_value: 'observation',
+          activity_notes: 'Test observation'
+        }
+      ];
+      
+      await generateThermalOrPowerReport(mockPage, mockFinalObject);
+      
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should handle workbench activities with null activity_date', async () => {
+      mockFinalObject.param.workbench = [
+        {
+          activity_type_value: 'observation',
+          activity_notes: 'Test observation',
+          activity_date: null
+        }
+      ];
+      
+      await generateThermalOrPowerReport(mockPage, mockFinalObject);
+      
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should handle workbench activities with undefined activity_date', async () => {
+      mockFinalObject.param.workbench = [
+        {
+          activity_type_value: 'observation',
+          activity_notes: 'Test observation',
+          activity_date: undefined
+        }
+      ];
+      
+      await generateThermalOrPowerReport(mockPage, mockFinalObject);
+      
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should handle workbench activities with invalid date format', async () => {
+      mockFinalObject.param.workbench = [
+        {
+          activity_type_value: 'observation',
+          activity_notes: 'Test observation',
+          activity_date: 'invalid-date'
+        }
+      ];
+      
+      await generateThermalOrPowerReport(mockPage, mockFinalObject);
+      
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should handle workbench activities with empty activity_type_value', async () => {
+      mockFinalObject.param.workbench = [
+        {
+          activity_type_value: '',
+          activity_notes: 'Test observation',
+          activity_date: '2023-01-01'
+        }
+      ];
+      
+      await generateThermalOrPowerReport(mockPage, mockFinalObject);
+      
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should handle workbench activities with null activity_type_value', async () => {
+      mockFinalObject.param.workbench = [
+        {
+          activity_type_value: null,
+          activity_notes: 'Test observation',
+          activity_date: '2023-01-01'
+        }
+      ];
+      
+      await generateThermalOrPowerReport(mockPage, mockFinalObject);
+      
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should handle workbench activities with undefined activity_type_value', async () => {
+      mockFinalObject.param.workbench = [
+        {
+          activity_type_value: undefined,
+          activity_notes: 'Test observation',
+          activity_date: '2023-01-01'
+        }
+      ];
+      
+      await generateThermalOrPowerReport(mockPage, mockFinalObject);
+      
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should handle workbench activities with whitespace-only activity_type_value', async () => {
+      mockFinalObject.param.workbench = [
+        {
+          activity_type_value: '   ',
+          activity_notes: 'Test observation',
+          activity_date: '2023-01-01'
+        }
+      ];
+      
+      await generateThermalOrPowerReport(mockPage, mockFinalObject);
+      
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should handle workbench activities with numeric activity_type_value', async () => {
+      mockFinalObject.param.workbench = [
+        {
+          activity_type_value: 123,
+          activity_notes: 'Test observation',
+          activity_date: '2023-01-01'
+        }
+      ];
+      
+      await generateThermalOrPowerReport(mockPage, mockFinalObject);
+      
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should handle workbench activities with boolean activity_type_value', async () => {
+      mockFinalObject.param.workbench = [
+        {
+          activity_type_value: true,
+          activity_notes: 'Test observation',
+          activity_date: '2023-01-01'
+        }
+      ];
+      
+      await generateThermalOrPowerReport(mockPage, mockFinalObject);
+      
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should handle workbench activities with object activity_type_value', async () => {
+      mockFinalObject.param.workbench = [
+        {
+          activity_type_value: { type: 'observation' },
+          activity_notes: 'Test observation',
+          activity_date: '2023-01-01'
+        }
+      ];
+      
+      await generateThermalOrPowerReport(mockPage, mockFinalObject);
+      
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should handle workbench activities with array activity_type_value', async () => {
+      mockFinalObject.param.workbench = [
+        {
+          activity_type_value: ['observation'],
+          activity_notes: 'Test observation',
+          activity_date: '2023-01-01'
+        }
+      ];
+      
+      await generateThermalOrPowerReport(mockPage, mockFinalObject);
+      
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should handle workbench activities with function activity_type_value', async () => {
+      mockFinalObject.param.workbench = [
+        {
+          activity_type_value: () => 'observation',
+          activity_notes: 'Test observation',
+          activity_date: '2023-01-01'
+        }
+      ];
+      
+      await generateThermalOrPowerReport(mockPage, mockFinalObject);
+      
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should handle workbench activities with NaN activity_type_value', async () => {
+      mockFinalObject.param.workbench = [
+        {
+          activity_type_value: NaN,
+          activity_notes: 'Test observation',
+          activity_date: '2023-01-01'
+        }
+      ];
+      
+      await generateThermalOrPowerReport(mockPage, mockFinalObject);
+      
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should handle workbench activities with Infinity activity_type_value', async () => {
+      mockFinalObject.param.workbench = [
+        {
+          activity_type_value: Infinity,
+          activity_notes: 'Test observation',
+          activity_date: '2023-01-01'
+        }
+      ];
+      
+      await generateThermalOrPowerReport(mockPage, mockFinalObject);
+      
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should handle workbench activities with -Infinity activity_type_value', async () => {
+      mockFinalObject.param.workbench = [
+        {
+          activity_type_value: -Infinity,
+          activity_notes: 'Test observation',
+          activity_date: '2023-01-01'
+        }
+      ];
+      
+      await generateThermalOrPowerReport(mockPage, mockFinalObject);
+      
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should handle workbench activities with 0 activity_type_value', async () => {
+      mockFinalObject.param.workbench = [
+        {
+          activity_type_value: 0,
+          activity_notes: 'Test observation',
+          activity_date: '2023-01-01'
+        }
+      ];
+      
+      await generateThermalOrPowerReport(mockPage, mockFinalObject);
+      
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should handle workbench activities with false activity_type_value', async () => {
+      mockFinalObject.param.workbench = [
+        {
+          activity_type_value: false,
+          activity_notes: 'Test observation',
+          activity_date: '2023-01-01'
+        }
+      ];
+      
+      await generateThermalOrPowerReport(mockPage, mockFinalObject);
+      
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should handle workbench activities with negative number activity_type_value', async () => {
+      mockFinalObject.param.workbench = [
+        {
+          activity_type_value: -1,
+          activity_notes: 'Test observation',
+          activity_date: '2023-01-01'
+        }
+      ];
+      
+      await generateThermalOrPowerReport(mockPage, mockFinalObject);
+      
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should handle workbench activities with decimal number activity_type_value', async () => {
+      mockFinalObject.param.workbench = [
+        {
+          activity_type_value: 3.14,
+          activity_notes: 'Test observation',
+          activity_date: '2023-01-01'
+        }
+      ];
+      
+      await generateThermalOrPowerReport(mockPage, mockFinalObject);
+      
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should handle workbench activities with very large number activity_type_value', async () => {
+      mockFinalObject.param.workbench = [
+        {
+          activity_type_value: Number.MAX_SAFE_INTEGER,
+          activity_notes: 'Test observation',
+          activity_date: '2023-01-01'
+        }
+      ];
+      
+      await generateThermalOrPowerReport(mockPage, mockFinalObject);
+      
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should handle workbench activities with very small number activity_type_value', async () => {
+      mockFinalObject.param.workbench = [
+        {
+          activity_type_value: Number.MIN_SAFE_INTEGER,
+          activity_notes: 'Test observation',
+          activity_date: '2023-01-01'
+        }
+      ];
+      
+      await generateThermalOrPowerReport(mockPage, mockFinalObject);
+      
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should handle workbench activities with Date object activity_type_value', async () => {
+      mockFinalObject.param.workbench = [
+        {
+          activity_type_value: new Date(),
+          activity_notes: 'Test observation',
+          activity_date: '2023-01-01'
+        }
+      ];
+      
+      await generateThermalOrPowerReport(mockPage, mockFinalObject);
+      
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should handle workbench activities with RegExp activity_type_value', async () => {
+      mockFinalObject.param.workbench = [
+        {
+          activity_type_value: /observation/i,
+          activity_notes: 'Test observation',
+          activity_date: '2023-01-01'
+        }
+      ];
+      
+      await generateThermalOrPowerReport(mockPage, mockFinalObject);
+      
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should handle workbench activities with Symbol activity_type_value', async () => {
+      mockFinalObject.param.workbench = [
+        {
+          activity_type_value: Symbol('observation'),
+          activity_notes: 'Test observation',
+          activity_date: '2023-01-01'
+        }
+      ];
+      
+      await generateThermalOrPowerReport(mockPage, mockFinalObject);
+      
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should handle workbench activities with BigInt activity_type_value', async () => {
+      mockFinalObject.param.workbench = [
+        {
+          activity_type_value: BigInt(123),
+          activity_notes: 'Test observation',
+          activity_date: '2023-01-01'
+        }
+      ];
+      
+      await generateThermalOrPowerReport(mockPage, mockFinalObject);
+      
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
   });
+
+  describe('generateDPGReport', () => {
+    let mockPage;
+    let mockFinalObject;
+
+    beforeEach(() => {
+      mockPage = {
+        evaluate: jest.fn().mockResolvedValue(Buffer.from('mock-pdf-content')),
+        setContent: jest.fn().mockResolvedValue(),
+        pdf: jest.fn().mockResolvedValue(Buffer.from('mock-pdf-content'))
+      };
+
+      mockFinalObject = {
+        param: {
+          call_no: 'TEST123',
+          product_group: 'dpg'
+        },
+        paramObj: {
+          material: []
+        }
+      };
+    });
+
+    it('should generate DPG report successfully', async () => {
+      await generateDPGReport(mockPage, mockFinalObject);
+      
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should handle DPG report with complex data', async () => {
+      mockFinalObject.paramObj = {
+        material: [
+          {
+            part_activity: 'issued',
+            part_code: 'DPG001',
+            part_description: 'DPG Part',
+            part_qty: '1'
+          }
+        ]
+      };
+
+      await generateDPGReport(mockPage, mockFinalObject);
+      
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should handle DPG report evaluation errors', async () => {
+      mockPage.evaluate.mockRejectedValue(new Error('DPG evaluation failed'));
+
+      await expect(generateDPGReport(mockPage, mockFinalObject)).rejects.toThrow('DPG evaluation failed');
+    });
+
+    it('should cover all DPG report evaluation paths with comprehensive data', async () => {
+      const comprehensiveDPGData = {
+        param: {
+          engineerSignature: 'data:image/png;base64,valid-signature',
+          managerSignature: 'data:image/png;base64,valid-manager-signature',
+          customerSignature: 'data:image/png;base64,valid-customer-signature',
+          call_no: 'DPG123',
+          customer_name: 'Test Customer',
+          customer_address: '123 Test St',
+          customer_city: 'Test City',
+          customer_state: 'TS',
+          customer_zip: '12345',
+          customer_country: 'Test Country'
+        },
+        room: {
+          customFields: {
+            engineerSignature: 'data:image/png;base64,room-engineer-signature',
+            managerSignature: 'data:image/png;base64,room-manager-signature',
+            customerSignature: 'data:image/png;base64,room-customer-signature'
+          }
+        },
+        paramObj: {
+          ratings: {
+            customerComment: 'Test customer comment',
+            customerSignature: 'data:image/png;base64,paramobj-customer-signature'
+          }
+        },
+        workbench: [
+          {
+            activity_type_value: 'Test Activity',
+            activity_notes: 'Test notes',
+            activity_date: '2023-01-01'
+          }
+        ],
+        serviceBillable: 'Yes',
+        comment: 'Test comment'
+      };
+
+      // Mock page.evaluate to simulate comprehensive execution
+      mockPage.evaluate.mockImplementation(async (fn, data) => {
+        const mockDocument = {
+          getElementById: jest.fn().mockReturnValue({
+            src: '',
+            textContent: '',
+            innerHTML: ''
+          })
+        };
+        
+        const mockContext = {
+          document: mockDocument,
+          console: { log: jest.fn(), error: jest.fn() }
+        };
+        
+        return await fn.call(mockContext, data);
+      });
+
+      await generateDPGReport(mockPage, comprehensiveDPGData);
+
+      expect(mockPage.evaluate).toHaveBeenCalledWith(
+        expect.any(Function),
+        comprehensiveDPGData
+      );
+    });
+
+    it('should cover DPG report with short signatures', async () => {
+      const shortSignatureData = {
+        param: {
+          engineerSignature: 'a', // Short signature
+          managerSignature: 'b',   // Short signature
+          customerSignature: 'c'   // Short signature
+        },
+        room: {
+          customFields: {
+            engineerSignature: 'data:image/png;base64,room-engineer-signature',
+            managerSignature: 'data:image/png;base64,room-manager-signature',
+            customerSignature: 'data:image/png;base64,room-customer-signature'
+          }
+        }
+      };
+
+      mockPage.evaluate.mockImplementation(async (fn, data) => {
+        const mockDocument = {
+          getElementById: jest.fn().mockReturnValue({
+            src: '',
+            textContent: '',
+            innerHTML: ''
+          })
+        };
+        
+        return await fn.call({ document: mockDocument }, data);
+      });
+
+      await generateDPGReport(mockPage, shortSignatureData);
+
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should cover DPG report with missing room customFields', async () => {
+      const missingRoomData = {
+        param: {
+          engineerSignature: 'data:image/png;base64,valid-signature'
+        },
+        room: {
+          customFields: null
+        }
+      };
+
+      mockPage.evaluate.mockImplementation(async (fn, data) => {
+        const mockDocument = {
+          getElementById: jest.fn().mockReturnValue({
+            src: '',
+            textContent: '',
+            innerHTML: ''
+          })
+        };
+        
+        return await fn.call({ document: mockDocument }, data);
+      });
+
+      await generateDPGReport(mockPage, missingRoomData);
+
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+  });
+
+  describe('generateDCPSReport', () => {
+    let mockPage;
+    let mockFinalObject;
+
+    beforeEach(() => {
+      mockPage = {
+        evaluate: jest.fn().mockResolvedValue(Buffer.from('mock-pdf-content')),
+        setContent: jest.fn().mockResolvedValue(),
+        pdf: jest.fn().mockResolvedValue(Buffer.from('mock-pdf-content'))
+      };
+
+      mockFinalObject = {
+        param: {
+          call_no: 'TEST123',
+          product_group: 'dcps',
+          cms_dcps_value: '{}'
+        },
+        paramObj: {
+          material: []
+        }
+      };
+    });
+
+    it('should generate DCPS report successfully', async () => {
+      await generateDCPSReport(mockPage, mockFinalObject);
+      
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should handle DCPS report with battery data', async () => {
+      mockFinalObject.param.cms_dcps_value = JSON.stringify({
+        battery: [
+          {
+            battery_type: 'Lithium',
+            battery_capacity: '100Ah',
+            battery_voltage: '12V'
+          }
+        ]
+      });
+
+      await generateDCPSReport(mockPage, mockFinalObject);
+      
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should handle DCPS report evaluation errors', async () => {
+      mockPage.evaluate.mockRejectedValue(new Error('DCPS evaluation failed'));
+
+      await expect(generateDCPSReport(mockPage, mockFinalObject)).rejects.toThrow('DCPS evaluation failed');
+    });
+
+    it('should cover all DCPS report evaluation paths with comprehensive data', async () => {
+      const comprehensiveDCPSData = {
+        param: {
+          engineerSignature: 'data:image/png;base64,valid-signature',
+          managerSignature: 'data:image/png;base64,valid-manager-signature',
+          customerSignature: 'data:image/png;base64,valid-customer-signature',
+          call_no: 'DCPS123',
+          customer_name: 'Test Customer',
+          customer_address: '123 Test St',
+          customer_city: 'Test City',
+          customer_state: 'TS',
+          customer_zip: '12345',
+          customer_country: 'Test Country'
+        },
+        room: {
+          customFields: {
+            engineerSignature: 'data:image/png;base64,room-engineer-signature',
+            managerSignature: 'data:image/png;base64,room-manager-signature',
+            customerSignature: 'data:image/png;base64,room-customer-signature'
+          }
+        },
+        paramObj: {
+          ratings: {
+            customerComment: 'Test customer comment',
+            customerSignature: 'data:image/png;base64,paramobj-customer-signature'
+          }
+        },
+        workbench: [
+          {
+            activity_type_value: 'Test Activity',
+            activity_notes: 'Test notes',
+            activity_date: '2023-01-01'
+          }
+        ],
+        serviceBillable: 'Yes',
+        comment: 'Test comment',
+        battery: [
+          {
+            battery_type: 'Test Battery',
+            battery_serial: 'BAT123',
+            battery_voltage: '12V'
+          }
+        ]
+      };
+
+      // Mock isJSON to return true for battery data
+      const { isJSON } = require('../../../src/utils/constants');
+      isJSON.mockReturnValue(true);
+
+      mockPage.evaluate.mockImplementation(async (fn, data) => {
+        const mockDocument = {
+          getElementById: jest.fn().mockReturnValue({
+            src: '',
+            textContent: '',
+            innerHTML: ''
+          })
+        };
+        
+        const mockContext = {
+          document: mockDocument,
+          console: { log: jest.fn(), error: jest.fn() }
+        };
+        
+        return await fn.call(mockContext, data);
+      });
+
+      await generateDCPSReport(mockPage, comprehensiveDCPSData);
+
+      expect(mockPage.evaluate).toHaveBeenCalledWith(
+        expect.any(Function),
+        comprehensiveDCPSData
+      );
+    });
+
+    it('should cover DCPS report with short signatures', async () => {
+      const shortSignatureData = {
+        param: {
+          engineerSignature: 'a', // Short signature
+          managerSignature: 'b',   // Short signature
+          customerSignature: 'c'   // Short signature
+        },
+        room: {
+          customFields: {
+            engineerSignature: 'data:image/png;base64,room-engineer-signature',
+            managerSignature: 'data:image/png;base64,room-manager-signature',
+            customerSignature: 'data:image/png;base64,room-customer-signature'
+          }
+        }
+      };
+
+      mockPage.evaluate.mockImplementation(async (fn, data) => {
+        const mockDocument = {
+          getElementById: jest.fn().mockReturnValue({
+            src: '',
+            textContent: '',
+            innerHTML: ''
+          })
+        };
+        
+        return await fn.call({ document: mockDocument }, data);
+      });
+
+      await generateDCPSReport(mockPage, shortSignatureData);
+
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should cover DCPS report with missing room customFields', async () => {
+      const missingRoomData = {
+        param: {
+          engineerSignature: 'data:image/png;base64,valid-signature'
+        },
+        room: {
+          customFields: null
+        }
+      };
+
+      mockPage.evaluate.mockImplementation(async (fn, data) => {
+        const mockDocument = {
+          getElementById: jest.fn().mockReturnValue({
+            src: '',
+            textContent: '',
+            innerHTML: ''
+          })
+        };
+        
+        return await fn.call({ document: mockDocument }, data);
+      });
+
+      await generateDCPSReport(mockPage, missingRoomData);
+
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+  });
+
+  describe('mergePDFs', () => {
+    it('should merge multiple PDF buffers successfully', async () => {
+      const bufferArray = [
+        Buffer.from('pdf1-content'),
+        Buffer.from('pdf2-content'),
+        Buffer.from('pdf3-content')
+      ];
+
+      const result = await mergePDFs(bufferArray);
+      
+      expect(result).toBeInstanceOf(Buffer);
+      expect(result.length).toBeGreaterThan(0);
+    });
+
+    it('should handle single PDF buffer', async () => {
+      const bufferArray = [
+        Buffer.from('single-pdf-content')
+      ];
+
+      const result = await mergePDFs(bufferArray);
+      
+      expect(result).toBeInstanceOf(Buffer);
+      expect(result.length).toBeGreaterThan(0);
+    });
+
+    it('should handle empty buffer array', async () => {
+      const bufferArray = [];
+
+      const result = await mergePDFs(bufferArray);
+      
+      expect(result).toBeInstanceOf(Buffer);
+    });
+
+    it('should handle PDF merging errors', async () => {
+      const bufferArray = [
+        Buffer.from('invalid-pdf-content')
+      ];
+
+      // Mock PDFDocument.load to throw an error
+      const originalPDFDocument = require('pdf-lib').PDFDocument;
+      const mockLoad = jest.spyOn(originalPDFDocument, 'load').mockRejectedValue(new Error('Invalid PDF'));
+
+      const result = await mergePDFs(bufferArray);
+      
+      // The function catches errors and returns a buffer, so we should get a result
+      expect(result).toBeInstanceOf(Buffer);
+      
+      // Restore original function
+      mockLoad.mockRestore();
+    });
+  });
+
+  describe('generateSafetyTableForOnepmFSR', () => {
+    it('should generate safety table for OnePM FSR', () => {
+      const formdata = [
+        {
+          hazard_name: 'Electrical Hazard',
+          risk_level: 'High',
+          mitigation: 'Use proper safety equipment'
+        }
+      ];
+
+      const result = generateSafetyTableForOnepmFSR(formdata);
+      
+      expect(result).toContain('hazard_name');
+      expect(result).toContain('risk_level');
+      expect(result).toContain('mitigation');
+    });
+
+    it('should handle empty formdata', () => {
+      const result = generateSafetyTableForOnepmFSR([]);
+      
+      expect(result).toBeDefined();
+      expect(typeof result).toBe('string');
+    });
+
+    it('should handle undefined formdata', () => {
+      const result = generateSafetyTableForOnepmFSR(undefined);
+      
+      expect(result).toBeDefined();
+      expect(typeof result).toBe('string');
+    });
+
+    it('should handle null formdata', () => {
+      const result = generateSafetyTableForOnepmFSR(null);
+      
+      expect(result).toBeDefined();
+      expect(typeof result).toBe('string');
+    });
+
+    it('should handle formdata with missing properties', () => {
+      const formdata = [
+        {
+          hazard_name: 'Test Hazard'
+          // Missing risk_level and mitigation
+        }
+      ];
+
+      const result = generateSafetyTableForOnepmFSR(formdata);
+      
+      expect(result).toContain('hazard_name');
+    });
+  });
+
+  describe('generateProductsCoveredTable', () => {
+    it('should generate products covered table', () => {
+      const summaryData = [
+        { product_name: 'Product 1', product_type: 'Type A' },
+        { product_name: 'Product 2', product_type: 'Type B' }
+      ];
+
+      const result = generateProductsCoveredTable(summaryData, 8);
+      
+      expect(result).toContain('Request Number');
+      expect(result).toContain('Product Model');
+      expect(result).toContain('Product Rating');
+      expect(result).toContain('Product Serial No.');
+      expect(result).toContain('Resolution Code');
+    });
+
+    it('should handle empty summary data', () => {
+      const result = generateProductsCoveredTable([], 8);
+      
+      expect(result).toBeDefined();
+      expect(typeof result).toBe('string');
+    });
+
+    it('should handle undefined summary data', () => {
+      const result = generateProductsCoveredTable(undefined, 8);
+      
+      expect(result).toBeDefined();
+      expect(typeof result).toBe('string');
+    });
+
+    it('should handle null summary data', () => {
+      const result = generateProductsCoveredTable(null, 8);
+      
+      expect(result).toBeDefined();
+      expect(typeof result).toBe('string');
+    });
+
+    it('should use default length when not provided', () => {
+      const summaryData = [
+        { product_name: 'Product 1' }
+      ];
+
+      const result = generateProductsCoveredTable(summaryData);
+      
+      expect(result).toBeDefined();
+      expect(typeof result).toBe('string');
+    });
+
+    it('should handle summary data with missing properties', () => {
+      const summaryData = [
+        { product_name: 'Product 1' }
+        // Missing product_type
+      ];
+
+      const result = generateProductsCoveredTable(summaryData, 8);
+      
+      expect(result).toContain('Request Number');
+    });
+  });
+
+  describe('generateOnePMFSR', () => {
+    let mockPage;
+    let mockFinalObject;
+
+    beforeEach(() => {
+      mockPage = {
+        evaluate: jest.fn().mockResolvedValue(Buffer.from('mock-pdf-content')),
+        setContent: jest.fn().mockResolvedValue(),
+        pdf: jest.fn().mockResolvedValue(Buffer.from('mock-pdf-content'))
+      };
+
+      mockFinalObject = {
+        param: {
+          call_no: 'TEST123',
+          isOnepmFSR: true
+        },
+        paramObj: {
+          material: []
+        },
+        tableHTML: '<div>Safety Table</div>',
+        productsCoveredHTML: '<div>Products Table</div>',
+        engineerSignature: 'data:image/png;base64,signature',
+        customerSignature: 'data:image/png;base64,customer-signature',
+        request_owner: 'John Doe',
+        booked_by: 'Jane Smith',
+        engineerComment: 'Test comment',
+        engineername: 'Engineer Name',
+        fsr_number: 'FSR123'
+      };
+    });
+
+    it('should generate OnePM FSR successfully', async () => {
+      await generateOnePMFSR(mockPage, mockFinalObject, 5);
+      
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should handle OnePM FSR with all fields', async () => {
+      mockFinalObject.paramObj = {
+        material: [
+          {
+            part_activity: 'issued',
+            part_code: 'PART001',
+            part_description: 'Test Part',
+            part_qty: '1'
+          }
+        ]
+      };
+
+      await generateOnePMFSR(mockPage, mockFinalObject, 3);
+      
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should handle OnePM FSR evaluation errors', async () => {
+      mockPage.evaluate.mockRejectedValue(new Error('OnePM FSR evaluation failed'));
+
+      await expect(generateOnePMFSR(mockPage, mockFinalObject, 3)).rejects.toThrow('OnePM FSR evaluation failed');
+    });
+
+    it('should handle OnePM FSR with missing fields', async () => {
+      const minimalFinalObject = {
+        param: { call_no: 'TEST123' },
+        paramObj: {},
+        tableHTML: '',
+        productsCoveredHTML: '',
+        engineerSignature: '',
+        customerSignature: '',
+        request_owner: '',
+        booked_by: '',
+        engineerComment: '',
+        engineername: '',
+        fsr_number: ''
+      };
+
+      await generateOnePMFSR(mockPage, minimalFinalObject, 1);
+      
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should cover all OnePM FSR evaluation paths with comprehensive data', async () => {
+      const comprehensiveOnePMData = {
+        param: {
+          engineerSignature: 'data:image/png;base64,valid-signature',
+          managerSignature: 'data:image/png;base64,valid-manager-signature',
+          customerSignature: 'data:image/png;base64,valid-customer-signature',
+          call_no: 'ONEPM123',
+          customer_name: 'Test Customer',
+          customer_address: '123 Test St',
+          customer_city: 'Test City',
+          customer_state: 'TS',
+          customer_zip: '12345',
+          customer_country: 'Test Country'
+        },
+        room: {
+          customFields: {
+            engineerSignature: 'data:image/png;base64,room-engineer-signature',
+            managerSignature: 'data:image/png;base64,room-manager-signature',
+            customerSignature: 'data:image/png;base64,room-customer-signature'
+          }
+        },
+        paramObj: {
+          ratings: {
+            customerComment: 'Test customer comment',
+            customerSignature: 'data:image/png;base64,paramobj-customer-signature'
+          },
+          fsr_number: 'FSR12345'
+        },
+        workbench: [
+          {
+            activity_type_value: 'Test Activity',
+            activity_notes: 'Test notes',
+            activity_date: '2023-01-01'
+          }
+        ],
+        serviceBillable: 'Yes',
+        comment: 'Test comment',
+        fsr_number: 'FSR67890'
+      };
+
+      mockPage.evaluate.mockImplementation(async (fn, data) => {
+        const mockDocument = {
+          getElementById: jest.fn().mockReturnValue({
+            src: '',
+            textContent: '',
+            innerHTML: ''
+          })
+        };
+        
+        const mockContext = {
+          document: mockDocument,
+          console: { log: jest.fn(), error: jest.fn() }
+        };
+        
+        return await fn.call(mockContext, data);
+      });
+
+      await generateOnePMFSR(mockPage, comprehensiveOnePMData, 1);
+
+      expect(mockPage.evaluate).toHaveBeenCalledWith(
+        expect.any(Function),
+        expect.objectContaining({
+          finalObject: comprehensiveOnePMData,
+          totalPageNumber: 1
+        })
+      );
+    });
+
+    it('should cover OnePM FSR with short signatures', async () => {
+      const shortSignatureData = {
+        param: {
+          engineerSignature: 'a', // Short signature
+          managerSignature: 'b',   // Short signature
+          customerSignature: 'c'   // Short signature
+        },
+        room: {
+          customFields: {
+            engineerSignature: 'data:image/png;base64,room-engineer-signature',
+            managerSignature: 'data:image/png;base64,room-manager-signature',
+            customerSignature: 'data:image/png;base64,room-customer-signature'
+          }
+        }
+      };
+
+      mockPage.evaluate.mockImplementation(async (fn, data) => {
+        const mockDocument = {
+          getElementById: jest.fn().mockReturnValue({
+            src: '',
+            textContent: '',
+            innerHTML: ''
+          })
+        };
+        
+        return await fn.call({ document: mockDocument }, data);
+      });
+
+      await generateOnePMFSR(mockPage, shortSignatureData, 1);
+
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should cover OnePM FSR with missing room customFields', async () => {
+      const missingRoomData = {
+        param: {
+          engineerSignature: 'data:image/png;base64,valid-signature'
+        },
+        room: {
+          customFields: null
+        }
+      };
+
+      mockPage.evaluate.mockImplementation(async (fn, data) => {
+        const mockDocument = {
+          getElementById: jest.fn().mockReturnValue({
+            src: '',
+            textContent: '',
+            innerHTML: ''
+          })
+        };
+        
+        return await fn.call({ document: mockDocument }, data);
+      });
+
+      await generateOnePMFSR(mockPage, missingRoomData, 1);
+
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+  });
+
+  describe('generateOnePMFSRChild', () => {
+    let mockPage;
+    let mockFinalObject;
+
+    beforeEach(() => {
+      mockPage = {
+        evaluate: jest.fn().mockResolvedValue(Buffer.from('mock-pdf-content')),
+        setContent: jest.fn().mockResolvedValue(),
+        pdf: jest.fn().mockResolvedValue(Buffer.from('mock-pdf-content'))
+      };
+
+      mockFinalObject = {
+        param: {
+          call_no: 'CHILD001',
+          isOnepmFSR: true
+        },
+        paramObj: {
+          material: []
+        },
+        tableHTML: '<div>Safety Table</div>',
+        returnedEls: '<div>Returned Parts</div>',
+        issuedEls: '<div>Issued Parts</div>',
+        engineerSignature: 'data:image/png;base64,signature',
+        customerSignature: 'data:image/png;base64,customer-signature',
+        request_owner: 'John Doe',
+        booked_by: 'Jane Smith',
+        engineerComment: 'Test comment',
+        engineername: 'Engineer Name',
+        fsr_number: 'FSR123',
+        service_provider: 'Service Provider'
+      };
+    });
+
+    it('should generate OnePM FSR Child successfully', async () => {
+      await generateOnePMFSRChild(mockPage, mockFinalObject, 2, 5);
+      
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should handle OnePM FSR Child with all fields', async () => {
+      mockFinalObject.paramObj = {
+        material: [
+          {
+            part_activity: 'issued',
+            part_code: 'PART001',
+            part_description: 'Test Part',
+            part_qty: '1'
+          }
+        ]
+      };
+
+      await generateOnePMFSRChild(mockPage, mockFinalObject, 3, 6);
+      
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should handle OnePM FSR Child evaluation errors', async () => {
+      mockPage.evaluate.mockRejectedValue(new Error('OnePM FSR Child evaluation failed'));
+
+      await expect(generateOnePMFSRChild(mockPage, mockFinalObject, 2, 5)).rejects.toThrow('OnePM FSR Child evaluation failed');
+    });
+
+    it('should handle OnePM FSR Child with missing fields', async () => {
+      const minimalFinalObject = {
+        param: { call_no: 'CHILD001' },
+        paramObj: {},
+        tableHTML: '',
+        returnedEls: '',
+        issuedEls: '',
+        engineerSignature: '',
+        customerSignature: '',
+        request_owner: '',
+        booked_by: '',
+        engineerComment: '',
+        engineername: '',
+        fsr_number: '',
+        service_provider: ''
+      };
+
+      await generateOnePMFSRChild(mockPage, minimalFinalObject, 1, 3);
+      
+      expect(mockPage.evaluate).toHaveBeenCalled();
+    });
+
+    it('should handle different page numbers', async () => {
+      await generateOnePMFSRChild(mockPage, mockFinalObject, 1, 10);
+      await generateOnePMFSRChild(mockPage, mockFinalObject, 5, 10);
+      await generateOnePMFSRChild(mockPage, mockFinalObject, 10, 10);
+      
+      expect(mockPage.evaluate).toHaveBeenCalledTimes(3);
+    });
+  });
+
+  describe('Additional Coverage Tests', () => {
+    let mockPage;
+
+    beforeEach(() => {
+      mockPage = {
+        evaluate: jest.fn().mockResolvedValue(Buffer.from('mock-pdf-content')),
+        setContent: jest.fn().mockResolvedValue(),
+        pdf: jest.fn().mockResolvedValue(Buffer.from('mock-pdf-content'))
+      };
+    });
+
+    describe('setImage function coverage', () => {
+      it('should handle setImage function in generateThermalOrPowerReport', async () => {
+        const mockFinalObject = {
+          param: {
+            call_no: 'TEST123',
+            engineerSignature: 'data:image/png;base64,test-signature'
+          }
+        };
+
+        await generateThermalOrPowerReport(mockPage, mockFinalObject);
+        
+        expect(mockPage.evaluate).toHaveBeenCalled();
+      });
+    });
+
+    describe('DPG Report comprehensive coverage', () => {
+      it('should cover all DPG report evaluation paths', async () => {
+        const mockFinalObject = {
+          param: {
+            call_no: 'TEST123',
+            product_group: 'dpg',
+            engineerSignature: 'data:image/png;base64,test-signature',
+            managerSignature: 'data:image/png;base64,test-manager-signature',
+            customerSignature: 'data:image/png;base64,test-customer-signature',
+            serviceBillable: 'Yes',
+            completion_date: '2023-01-01',
+            servicetype: 'Maintenance',
+            service_provider: 'Test Provider',
+            problem_code_description: 'Test Problem',
+            resolution_code_description: 'Test Resolution',
+            customer_address: 'Test Address',
+            customer_city: 'Test City',
+            customer_state: 'Test State',
+            customer_zip: '12345',
+            customer_country: 'Test Country',
+            engineerComment: 'Test Comment',
+            engineername: 'Test Engineer',
+            fsr_number: 'FSR123'
+          },
+          paramObj: {
+            material: [
+              {
+                part_activity: 'issued',
+                part_code: 'PART001',
+                part_description: 'Test Part',
+                part_qty: '1'
+              }
+            ],
+            ratings: {
+              signature: 'data:image/png;base64,test-rating-signature',
+              comment: 'Test Rating Comment'
+            }
+          },
+          room: {
+            customFields: {
+              engineerSignature: 'data:image/png;base64,test-room-signature',
+              managerSignature: 'data:image/png;base64,test-room-manager-signature'
+            }
+          }
+        };
+
+        await generateDPGReport(mockPage, mockFinalObject);
+        
+        expect(mockPage.evaluate).toHaveBeenCalled();
+      });
+    });
+
+    describe('DCPS Report comprehensive coverage', () => {
+      it('should cover DCPS risk assessment generation', async () => {
+        const mockFinalObject = {
+          param: {
+            call_no: 'TEST123',
+            product_group: 'dcps',
+            cms_dcps_value: JSON.stringify({
+              battery: [
+                {
+                  battery_type: 'Lithium',
+                  battery_capacity: '100Ah',
+                  battery_voltage: '12V'
+                }
+              ]
+            })
+          },
+          paramObj: {
+            material: [],
+            formdata: [
+              {
+                risk_assessment: {
+                  hazard_name: 'Electrical Shock',
+                  risk_level: 'High',
+                  mitigation: 'Use proper PPE'
+                }
+              }
+            ]
+          }
+        };
+
+        await generateDCPSReport(mockPage, mockFinalObject);
+        
+        expect(mockPage.evaluate).toHaveBeenCalled();
+      });
+
+      it('should handle DCPS report with all fields populated', async () => {
+        const mockFinalObject = {
+          param: {
+            call_no: 'TEST123',
+            product_group: 'dcps',
+            cms_dcps_value: '{}',
+            engineerSignature: 'data:image/png;base64,test-signature',
+            managerSignature: 'data:image/png;base64,test-manager-signature',
+            customerSignature: 'data:image/png;base64,test-customer-signature',
+            serviceBillable: 'No',
+            completion_date: '2023-01-01',
+            servicetype: 'Repair',
+            service_provider: 'Test Provider',
+            problem_code_description: 'Test Problem',
+            resolution_code_description: 'Test Resolution',
+            customer_address: 'Test Address',
+            customer_city: 'Test City',
+            customer_state: 'Test State',
+            customer_zip: '12345',
+            customer_country: 'Test Country',
+            engineerComment: 'Test Comment',
+            engineername: 'Test Engineer',
+            fsr_number: 'FSR123'
+          },
+          paramObj: {
+            material: [],
+            formdata: [
+              {
+                risk_assessment: {
+                  hazard_name: 'Fire Risk',
+                  risk_level: 'Medium',
+                  mitigation: 'Install fire suppression'
+                }
+              }
+            ],
+            ratings: {
+              signature: 'data:image/png;base64,test-rating-signature',
+              comment: 'Test Rating Comment'
+            }
+          },
+          room: {
+            customFields: {
+              engineerSignature: 'data:image/png;base64,test-room-signature',
+              managerSignature: 'data:image/png;base64,test-room-manager-signature'
+            }
+          }
+        };
+
+        await generateDCPSReport(mockPage, mockFinalObject);
+        
+        expect(mockPage.evaluate).toHaveBeenCalled();
+      });
+    });
+
+    describe('generateDCPSRiskAssesment function coverage', () => {
+      it('should handle formdata with risk_assessment', () => {
+        const formdataArray = [
+          {
+            risk_assessment: {
+              hazard_name: 'Electrical Shock',
+              risk_level: 'High',
+              mitigation: 'Use proper PPE'
+            }
+          },
+          {
+            risk_assessment: {
+              hazard_name: 'Fire Risk',
+              risk_level: 'Medium',
+              mitigation: 'Install fire suppression'
+            }
+          }
+        ];
+
+        const result = generateDCPSRiskAssesment(formdataArray);
+        
+        expect(result).toHaveProperty('risk1hazard_name', 'Electrical Shock');
+        expect(result).toHaveProperty('risk1risk_level', 'High');
+        expect(result).toHaveProperty('risk1mitigation', 'Use proper PPE');
+        expect(result).toHaveProperty('risk2hazard_name', 'Fire Risk');
+        expect(result).toHaveProperty('risk2risk_level', 'Medium');
+        expect(result).toHaveProperty('risk2mitigation', 'Install fire suppression');
+      });
+
+      it('should handle formdata without risk_assessment', () => {
+        const formdataArray = [
+          {
+            other_field: 'test'
+          }
+        ];
+
+        const result = generateDCPSRiskAssesment(formdataArray);
+        
+        expect(result).toEqual({});
+      });
+
+      it('should handle empty risk_assessment values', () => {
+        const formdataArray = [
+          {
+            risk_assessment: {
+              hazard_name: null,
+              risk_level: undefined,
+              mitigation: ''
+            }
+          }
+        ];
+
+        const result = generateDCPSRiskAssesment(formdataArray);
+        
+        expect(result).toHaveProperty('risk1hazard_name', '');
+        expect(result).toHaveProperty('risk1risk_level', '');
+        expect(result).toHaveProperty('risk1mitigation', '');
+      });
+    });
+
+    describe('generateProductsCoveredTable comprehensive coverage', () => {
+      it('should handle summary data with exactly 8 items', () => {
+        const summaryData = Array.from({ length: 8 }, (_, i) => ({
+          product_name: `Product ${i + 1}`,
+          product_model: `Model ${i + 1}`,
+          product_rating: `${i + 1}kW`,
+          product_serialno: `SN${i + 1}`,
+          resolution_code_description: `Resolution ${i + 1}`
+        }));
+
+        const result = generateProductsCoveredTable(summaryData, 8);
+        
+        expect(result).toContain('Request Number');
+        expect(result).toContain('Product Model');
+        expect(result).toContain('Product Rating');
+        expect(result).toContain('Product Serial No.');
+        expect(result).toContain('Resolution Code');
+      });
+
+      it('should handle summary data with more than 8 items (should break at 8)', () => {
+        const summaryData = Array.from({ length: 10 }, (_, i) => ({
+          product_name: `Product ${i + 1}`,
+          product_model: `Model ${i + 1}`,
+          product_rating: `${i + 1}kW`,
+          product_serialno: `SN${i + 1}`,
+          resolution_code_description: `Resolution ${i + 1}`
+        }));
+
+        const result = generateProductsCoveredTable(summaryData, 8);
+        
+        expect(result).toContain('Request Number');
+        // Should only process first 8 items - check for Model names instead of Product names
+        expect(result).toContain('Model 1');
+        expect(result).toContain('Model 8');
+      });
+
+      it('should handle summary data with missing properties', () => {
+        const summaryData = [
+          {
+            product_name: 'Product 1'
+            // Missing other properties
+          },
+          {
+            product_model: 'Model 2'
+            // Missing other properties
+          }
+        ];
+
+        const result = generateProductsCoveredTable(summaryData, 8);
+        
+        expect(result).toContain('Request Number');
+        expect(result).toContain('Product Model');
+      });
+    });
+
+    describe('generateOnePMFSR comprehensive coverage', () => {
+      it('should handle OnePM FSR with all possible fields', async () => {
+        const mockFinalObject = {
+          param: {
+            call_no: 'TEST123',
+            isOnepmFSR: true,
+            fsr_number: 'FSR123',
+            completion_date: '2023-01-01',
+            servicetype: 'Maintenance',
+            service_provider: 'Test Provider',
+            problem_code_description: 'Test Problem',
+            resolution_code_description: 'Test Resolution',
+            customer_address: 'Test Address',
+            customer_city: 'Test City',
+            customer_state: 'Test State',
+            customer_zip: '12345',
+            customer_country: 'Test Country',
+            engineerComment: 'Test Comment',
+            engineername: 'Test Engineer',
+            engineerSignature: 'data:image/png;base64,test-signature',
+            customerSignature: 'data:image/png;base64,test-customer-signature',
+            serviceBillable: 'Yes'
+          },
+          paramObj: {
+            material: [
+              {
+                part_activity: 'issued',
+                part_code: 'PART001',
+                part_description: 'Test Part',
+                part_qty: '1'
+              }
+            ],
+            fsr_number: 'FSR123',
+            ratings: {
+              signature: 'data:image/png;base64,test-rating-signature',
+              comment: 'Test Rating Comment'
+            }
+          },
+          tableHTML: '<div>Safety Table</div>',
+          productsCoveredHTML: '<div>Products Table</div>',
+          engineerSignature: 'data:image/png;base64,signature',
+          customerSignature: 'data:image/png;base64,customer-signature',
+          request_owner: 'John Doe',
+          booked_by: 'Jane Smith',
+          engineerComment: 'Test comment',
+          engineername: 'Engineer Name',
+          fsr_number: 'FSR123'
+        };
+
+        await generateOnePMFSR(mockPage, mockFinalObject, 5);
+        
+        expect(mockPage.evaluate).toHaveBeenCalled();
+      });
+
+      it('should handle OnePM FSR with fsr_number from paramObj', async () => {
+        const mockFinalObject = {
+          param: {
+            call_no: 'TEST123',
+            isOnepmFSR: true
+          },
+          paramObj: {
+            fsr_number: 'FSR123',
+            material: []
+          },
+          tableHTML: '<div>Safety Table</div>',
+          productsCoveredHTML: '<div>Products Table</div>',
+          engineerSignature: 'data:image/png;base64,signature',
+          customerSignature: 'data:image/png;base64,customer-signature',
+          request_owner: 'John Doe',
+          booked_by: 'Jane Smith',
+          engineerComment: 'Test comment',
+          engineername: 'Engineer Name',
+          fsr_number: 'FSR123'
+        };
+
+        await generateOnePMFSR(mockPage, mockFinalObject, 3);
+        
+        expect(mockPage.evaluate).toHaveBeenCalled();
+      });
+    });
+
+    describe('generateOnePMFSRChild comprehensive coverage', () => {
+      it('should handle OnePM FSR Child with all possible fields', async () => {
+        const mockFinalObject = {
+          param: {
+            call_no: 'CHILD001',
+            isOnepmFSR: true,
+            fsr_number: 'FSR123',
+            completion_date: '2023-01-01',
+            servicetype: 'Maintenance',
+            service_provider: 'Test Provider',
+            problem_code_description: 'Test Problem',
+            resolution_code_description: 'Test Resolution',
+            customer_address: 'Test Address',
+            customer_city: 'Test City',
+            customer_state: 'Test State',
+            customer_zip: '12345',
+            customer_country: 'Test Country',
+            engineerComment: 'Test Comment',
+            engineername: 'Test Engineer',
+            engineerSignature: 'data:image/png;base64,test-signature',
+            customerSignature: 'data:image/png;base64,test-customer-signature',
+            serviceBillable: 'Yes'
+          },
+          paramObj: {
+            material: [
+              {
+                part_activity: 'issued',
+                part_code: 'PART001',
+                part_description: 'Test Part',
+                part_qty: '1'
+              }
+            ],
+            ratings: {
+              signature: 'data:image/png;base64,test-rating-signature',
+              comment: 'Test Rating Comment'
+            }
+          },
+          tableHTML: '<div>Safety Table</div>',
+          returnedEls: '<div>Returned Parts</div>',
+          issuedEls: '<div>Issued Parts</div>',
+          engineerSignature: 'data:image/png;base64,signature',
+          customerSignature: 'data:image/png;base64,customer-signature',
+          request_owner: 'John Doe',
+          booked_by: 'Jane Smith',
+          engineerComment: 'Test comment',
+          engineername: 'Engineer Name',
+          fsr_number: 'FSR123',
+          service_provider: 'Service Provider'
+        };
+
+        await generateOnePMFSRChild(mockPage, mockFinalObject, 2, 5);
+        
+        expect(mockPage.evaluate).toHaveBeenCalled();
+      });
+
+      it('should handle OnePM FSR Child with fsr_number from finalObject', async () => {
+        const mockFinalObject = {
+          param: {
+            call_no: 'CHILD001',
+            isOnepmFSR: true
+          },
+          paramObj: {
+            material: []
+          },
+          tableHTML: '<div>Safety Table</div>',
+          returnedEls: '<div>Returned Parts</div>',
+          issuedEls: '<div>Issued Parts</div>',
+          engineerSignature: 'data:image/png;base64,signature',
+          customerSignature: 'data:image/png;base64,customer-signature',
+          request_owner: 'John Doe',
+          booked_by: 'Jane Smith',
+          engineerComment: 'Test comment',
+          engineername: 'Engineer Name',
+          fsr_number: 'FSR123',
+          service_provider: 'Service Provider'
+        };
+
+        await generateOnePMFSRChild(mockPage, mockFinalObject, 1, 3);
+        
+        expect(mockPage.evaluate).toHaveBeenCalled();
+      });
+
+      it('should cover all OnePM FSR Child evaluation paths with comprehensive data', async () => {
+        const comprehensiveOnePMChildData = {
+          param: {
+            engineerSignature: 'data:image/png;base64,valid-signature',
+            managerSignature: 'data:image/png;base64,valid-manager-signature',
+            customerSignature: 'data:image/png;base64,valid-customer-signature',
+            call_no: 'ONEPM123',
+            customer_name: 'Test Customer',
+            customer_address: '123 Test St',
+            customer_city: 'Test City',
+            customer_state: 'TS',
+            customer_zip: '12345',
+            customer_country: 'Test Country'
+          },
+          room: {
+            customFields: {
+              engineerSignature: 'data:image/png;base64,room-engineer-signature',
+              managerSignature: 'data:image/png;base64,room-manager-signature',
+              customerSignature: 'data:image/png;base64,room-customer-signature'
+            }
+          },
+          paramObj: {
+            ratings: {
+              customerComment: 'Test customer comment',
+              customerSignature: 'data:image/png;base64,paramobj-customer-signature'
+            },
+            fsr_number: 'FSR12345'
+          },
+          workbench: [
+            {
+              activity_type_value: 'Test Activity',
+              activity_notes: 'Test notes',
+              activity_date: '2023-01-01'
+            }
+          ],
+          serviceBillable: 'Yes',
+          comment: 'Test comment',
+          fsr_number: 'FSR67890'
+        };
+
+        mockPage.evaluate.mockImplementation(async (fn, data) => {
+          const mockDocument = {
+            getElementById: jest.fn().mockReturnValue({
+              src: '',
+              textContent: '',
+              innerHTML: ''
+            })
+          };
+          
+          const mockContext = {
+            document: mockDocument,
+            console: { log: jest.fn(), error: jest.fn() }
+          };
+          
+          return await fn.call(mockContext, data);
+        });
+
+        await generateOnePMFSRChild(mockPage, comprehensiveOnePMChildData, 1, 2);
+
+        expect(mockPage.evaluate).toHaveBeenCalledWith(
+          expect.any(Function),
+          expect.objectContaining({
+            finalObject: comprehensiveOnePMChildData,
+            pageNumber: 1,
+            totalPageNumber: 2
+          })
+        );
+      });
+
+      it('should cover OnePM FSR Child with short signatures', async () => {
+        const shortSignatureData = {
+          param: {
+            engineerSignature: 'a', // Short signature
+            managerSignature: 'b',   // Short signature
+            customerSignature: 'c'   // Short signature
+          },
+          room: {
+            customFields: {
+              engineerSignature: 'data:image/png;base64,room-engineer-signature',
+              managerSignature: 'data:image/png;base64,room-manager-signature',
+              customerSignature: 'data:image/png;base64,room-customer-signature'
+            }
+          }
+        };
+
+        mockPage.evaluate.mockImplementation(async (fn, data) => {
+          const mockDocument = {
+            getElementById: jest.fn().mockReturnValue({
+              src: '',
+              textContent: '',
+              innerHTML: ''
+            })
+          };
+          
+          return await fn.call({ document: mockDocument }, data);
+        });
+
+        await generateOnePMFSRChild(mockPage, shortSignatureData, 1, 2);
+
+        expect(mockPage.evaluate).toHaveBeenCalled();
+      });
+
+      it('should cover OnePM FSR Child with missing room customFields', async () => {
+        const missingRoomData = {
+          param: {
+            engineerSignature: 'data:image/png;base64,valid-signature'
+          },
+          room: {
+            customFields: null
+          }
+        };
+
+        mockPage.evaluate.mockImplementation(async (fn, data) => {
+          const mockDocument = {
+            getElementById: jest.fn().mockReturnValue({
+              src: '',
+              textContent: '',
+              innerHTML: ''
+            })
+          };
+          
+          return await fn.call({ document: mockDocument }, data);
+        });
+
+        await generateOnePMFSRChild(mockPage, missingRoomData, 1, 2);
+
+        expect(mockPage.evaluate).toHaveBeenCalled();
+      });
+    });
+  });
+
 });

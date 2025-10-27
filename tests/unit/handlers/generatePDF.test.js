@@ -972,5 +972,212 @@ describe('GeneratePDF Handler', () => {
       // Restore original fs.existsSync
       fs.existsSync = originalExistsSync;
     });
+
+    it('should handle puppeteer fallback when Chrome not found (lines 112-120)', async () => {
+      // Set environment to local to trigger Chrome detection
+      process.env.NODE_ENV = 'local';
+      
+      // Mock fs.existsSync to return false (no Chrome found)
+      const fs = require('fs');
+      const originalExistsSync = fs.existsSync;
+      fs.existsSync = jest.fn(() => false);
+
+      // Mock regular puppeteer to succeed
+      const mockRegularPuppeteer = require('puppeteer');
+      mockRegularPuppeteer.launch.mockResolvedValue(mockBrowser);
+
+      const event = {
+        headers: { 'user-agent': 'test-agent' },
+        body: { call_no: 'TEST123', product_group: 'thermal' }
+      };
+
+      const result = await generatePDFHandler.handler(event);
+      
+      expect(result.statusCode).toBe(200);
+      expect(fs.existsSync).toHaveBeenCalled();
+      
+      // Restore original fs.existsSync
+      fs.existsSync = originalExistsSync;
+    });
+
+    it('should handle puppeteer fallback failure (lines 116-118)', async () => {
+      // Set environment to local to trigger Chrome detection
+      process.env.NODE_ENV = 'local';
+      
+      // Mock fs.existsSync to return false (no Chrome found)
+      const fs = require('fs');
+      const originalExistsSync = fs.existsSync;
+      fs.existsSync = jest.fn(() => false);
+
+      // Mock regular puppeteer to fail
+      const mockRegularPuppeteer = require('puppeteer');
+      mockRegularPuppeteer.launch.mockRejectedValue(new Error('Regular puppeteer failed'));
+
+      const event = {
+        headers: { 'user-agent': 'test-agent' },
+        body: { call_no: 'TEST123', product_group: 'thermal' }
+      };
+
+      const result = await generatePDFHandler.handler(event);
+      
+      expect(result.statusCode).toBe(500);
+      expect(fs.existsSync).toHaveBeenCalled();
+      
+      // Restore original fs.existsSync
+      fs.existsSync = originalExistsSync;
+    });
+
+    it('should handle AWS Lambda environment configuration (lines 123-129)', async () => {
+      // Set environment to production to trigger Lambda config
+      process.env.NODE_ENV = 'production';
+      process.env.STAGE = 'prod';
+
+      const event = {
+        headers: { 'user-agent': 'test-agent' },
+        body: { call_no: 'TEST123', product_group: 'thermal' }
+      };
+
+      const result = await generatePDFHandler.handler(event);
+      
+      expect(result.statusCode).toBe(200);
+      expect(puppeteer.launch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          args: ['--test-arg'],
+          defaultViewport: { width: 800, height: 600 },
+          executablePath: '/test/chromium',
+          headless: true,
+          ignoreHTTPSErrors: true
+        })
+      );
+    });
+
+    it('should handle browser launch with executablePath failure and retry (lines 142-165)', async () => {
+      // Mock puppeteer-core to fail with executablePath
+      puppeteer.launch.mockRejectedValue(new Error('Launch failed with executablePath'));
+      
+      // Mock regular puppeteer to succeed
+      const mockRegularPuppeteer = require('puppeteer');
+      mockRegularPuppeteer.launch.mockResolvedValue(mockBrowser);
+
+      const event = {
+        headers: { 'user-agent': 'test-agent' },
+        body: { call_no: 'TEST123', product_group: 'thermal' }
+      };
+
+      const result = await generatePDFHandler.handler(event);
+      
+      expect(result.statusCode).toBe(200);
+      expect(puppeteer.launch).toHaveBeenCalledTimes(1);
+      expect(mockRegularPuppeteer.launch).toHaveBeenCalledTimes(1);
+    });
+
+    it('should handle fallback puppeteer failure (lines 162-165)', async () => {
+      // Mock puppeteer-core to fail
+      puppeteer.launch.mockRejectedValue(new Error('Launch failed'));
+      
+      // Mock regular puppeteer to also fail
+      const mockRegularPuppeteer = require('puppeteer');
+      mockRegularPuppeteer.launch.mockRejectedValue(new Error('Fallback also failed'));
+
+      const event = {
+        headers: { 'user-agent': 'test-agent' },
+        body: { call_no: 'TEST123', product_group: 'thermal' }
+      };
+
+      const result = await generatePDFHandler.handler(event);
+      
+      expect(result.statusCode).toBe(500);
+      expect(JSON.parse(result.body).error).toContain('Failed to launch browser');
+    });
+
+    it('should handle PDF generation retry with specific error (lines 176-190)', async () => {
+      // Mock PDF generation to fail with specific error message
+      reportGenerationHelpers.generateThermalOrPowerReport
+        .mockRejectedValueOnce(new Error('Protocol error (Page.printToPDF): Printing failed'))
+        .mockResolvedValueOnce(Buffer.from('mock-pdf-content'));
+
+      const event = {
+        headers: { 'user-agent': 'test-agent' },
+        body: { call_no: 'TEST123', product_group: 'thermal' }
+      };
+
+      const result = await generatePDFHandler.handler(event);
+      
+      expect(result.statusCode).toBe(200);
+      expect(constants.sleep).toHaveBeenCalledWith(1000);
+      expect(reportGenerationHelpers.generateThermalOrPowerReport).toHaveBeenCalledTimes(2);
+    });
+
+    it('should handle PDF generation retry with config timeout (lines 176-190)', async () => {
+      // Mock config to return custom timeout
+      config.app.fsrReattemptTimeout = 2000;
+
+      // Mock PDF generation to fail with specific error message
+      reportGenerationHelpers.generateThermalOrPowerReport
+        .mockRejectedValueOnce(new Error('Protocol error (Page.printToPDF): Printing failed'))
+        .mockResolvedValueOnce(Buffer.from('mock-pdf-content'));
+
+      const event = {
+        headers: { 'user-agent': 'test-agent' },
+        body: { call_no: 'TEST123', product_group: 'thermal' }
+      };
+
+      const result = await generatePDFHandler.handler(event);
+      
+      expect(result.statusCode).toBe(200);
+      expect(constants.sleep).toHaveBeenCalledWith(2000);
+      expect(reportGenerationHelpers.generateThermalOrPowerReport).toHaveBeenCalledTimes(2);
+    });
+
+    it('should handle PDF generation failure without retry for other errors (lines 203-204)', async () => {
+      // Mock PDF generation to fail with non-retryable error
+      reportGenerationHelpers.generateThermalOrPowerReport
+        .mockRejectedValue(new Error('Some other error'));
+
+      const event = {
+        headers: { 'user-agent': 'test-agent' },
+        body: { call_no: 'TEST123', product_group: 'thermal' }
+      };
+
+      const result = await generatePDFHandler.handler(event);
+      
+      expect(result.statusCode).toBe(500);
+      expect(constants.sleep).not.toHaveBeenCalled();
+      expect(reportGenerationHelpers.generateThermalOrPowerReport).toHaveBeenCalledTimes(1);
+    });
+
+    it('should handle S3 upload success (lines 218-221)', async () => {
+      const event = {
+        headers: { 'user-agent': 'test-agent' },
+        body: { call_no: 'TEST123', product_group: 'thermal' }
+      };
+
+      const result = await generatePDFHandler.handler(event);
+      
+      expect(result.statusCode).toBe(200);
+      expect(s3Operations.s3FSRFileOperations).toHaveBeenCalledWith(
+        'post',
+        expect.any(String),
+        expect.any(Buffer),
+        expect.objectContaining({
+          'x-amz-meta-call-no': 'TEST123',
+          'x-amz-meta-product-group': 'thermal'
+        })
+      );
+    });
+
+    it('should handle S3 upload failure gracefully (lines 226-229)', async () => {
+      s3Operations.s3FSRFileOperations.mockRejectedValue(new Error('S3 upload failed'));
+
+      const event = {
+        headers: { 'user-agent': 'test-agent' },
+        body: { call_no: 'TEST123', product_group: 'thermal' }
+      };
+
+      const result = await generatePDFHandler.handler(event);
+      
+      expect(result.statusCode).toBe(200); // Should still succeed despite S3 failure
+      expect(logger.warn).toHaveBeenCalledWith('S3 upload failed, but PDF generation succeeded');
+    });
   });
 });

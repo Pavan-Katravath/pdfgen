@@ -42,11 +42,11 @@ functions:
     description: Generate PDF reports for different product groups
     events:
       - http:
-          path: notification.report
+          path: api/v1/notification.report
           method: post
           cors: true
       - http:
-          path: notification.report
+          path: api/v1/notification.report
           method: options
           cors: true
     reservedConcurrency: 10
@@ -56,13 +56,27 @@ functions:
     description: Retrieve PDF reports from S3
     events:
       - http:
-          path: report.getpdf
+          path: api/v1/report.getpdf
           method: get
           cors: true
       - http:
-          path: report.getpdf
+          path: api/v1/report.getpdf
           method: options
           cors: true
+
+  onepmFSR:
+    handler: src/handlers/onepmFSR.handler
+    description: Generate OnePM FSR reports with child PDFs
+    events:
+      - http:
+          path: api/v1/report.onepmFSR
+          method: post
+          cors: true
+      - http:
+          path: api/v1/report.onepmFSR
+          method: options
+          cors: true
+    reservedConcurrency: 5
 
 plugins:
   - serverless-offline
