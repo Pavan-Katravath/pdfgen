@@ -78,6 +78,19 @@ functions:
           cors: true
     reservedConcurrency: 5
 
+  generateChecklist:
+    handler: src/handlers/generateChecklist.handler
+    description: Generate PM/Commissioning checklists (DPG/AIR/DCPS)
+    events:
+      - http:
+          path: api/v1/report.generateChecklist
+          method: post
+          cors: true
+      - http:
+          path: api/v1/report.generateChecklist
+          method: options
+          cors: true
+
 plugins:
   - serverless-dotenv-plugin
   - serverless-offline

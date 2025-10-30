@@ -9,7 +9,16 @@ class TemplateLoader {
   }
 
       loadTemplates() {
-        const templateFiles = ['dpg.html', 'thermal.html', 'dcps.html', 'onepmFSR.html', 'onepmFSRChild.html'];
+        const templateFiles = [
+          'dpg.html',
+          'thermal.html',
+          'dcps.html',
+          'onepmFSR.html',
+          'onepmFSRChild.html',
+          'dpg_checklist.html',
+          'thermal_checklist.html',
+          'dcps_checklist.html'
+        ];
     
     templateFiles.forEach(file => {
       const templateName = file.replace('.html', '');

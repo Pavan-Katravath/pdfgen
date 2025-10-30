@@ -1021,6 +1021,797 @@ function generateProductsCoveredTable(summaryData, defaultLength=8) {
 		</div>`;
 }
 
+// DPG Checklist
+async function generateDpgPDF(page, bodyParams) {
+	let batteryTable = '';
+	let floatVoltTotal = 0;
+	let battVoltStart = 0;
+	let battVoltEnd = 0;
+	let battVoltAfter = 0;
+
+	function ensureBatteryDataLength(batteryData, desiredLength = 20) {
+		const emptyObject = {
+			name: "",
+			battery_batch_no: "",
+			battery_float_voltage: "",
+			start: false,
+			dis_mode_bat_volt_start: "",
+			dis_mode_bat_volt_end: "",
+			dis_mode_bat_time_diff: "",
+			char_mode_bat_after_sometime: "",
+			physical_condition: "",
+			id: "",
+			dpg_form_id: "",
+			is_sync: false
+		};
+
+		if (batteryData.length > desiredLength && batteryData.length <= 28 && !(batteryData.length >= 35)) {
+			desiredLength = 28;
+		} else if (batteryData.length > desiredLength && batteryData.length <= 35) {
+			desiredLength = 35;
+		}
+
+		while (batteryData.length < desiredLength) {
+			batteryData.push({ ...emptyObject });
+		}
+		return batteryData;
+	}
+
+	let tableLength = 0;
+	for (const [i, data] of ensureBatteryDataLength(bodyParams.battery_data || []).entries()) {
+		batteryTable += `
+			<tr>
+				<td class="h" style="text-align: center;">${i + 1}</td>
+				<td style="text-align: center;">${data.battery_batch_no && bodyParams.battery_make ? bodyParams.battery_make : ""}</td>
+				<td style="text-align: center;">${data.battery_batch_no && bodyParams.battery_type ? bodyParams.battery_type : ""}</td>
+				<td style="text-align: center;">${data.battery_batch_no && bodyParams.battery_capacity ? bodyParams.battery_capacity : ""}</td>
+				<td style="text-align: center;">${data.battery_batch_no ? data.battery_batch_no : ""}</td>
+				<td style="text-align: center;">${data.battery_float_voltage ? data.battery_float_voltage : ""}</td>
+				<td style="text-align: center;">${data.dis_mode_bat_volt_start ? data.dis_mode_bat_volt_start : ""}</td>
+				<td style="text-align: center;">${data.dis_mode_bat_volt_end ? data.dis_mode_bat_volt_end : ""}</td>
+				<td style="text-align: center;">${data.dis_mode_bat_time_diff ? data.dis_mode_bat_time_diff : ""}</td>
+				<td style="text-align: center;">${data.char_mode_bat_after_sometime ? data.char_mode_bat_after_sometime : ""}</td>
+				<td style="text-align: center;">${data.physical_condition ? data.physical_condition : ""}</td>
+			</tr>
+		`;
+		floatVoltTotal += parseFloat(data.battery_float_voltage) ? parseFloat(data.battery_float_voltage) : 0;
+		battVoltStart += parseFloat(data.dis_mode_bat_volt_start) ? parseFloat(data.dis_mode_bat_volt_start) : 0;
+		battVoltEnd += parseFloat(data.dis_mode_bat_volt_end) ? parseFloat(data.dis_mode_bat_volt_end) : 0;
+		battVoltAfter += parseFloat(data.char_mode_bat_after_sometime) ? parseFloat(data.char_mode_bat_after_sometime) : 0;
+		tableLength += 1;
+	}
+
+	batteryTable += `
+		<tr>
+			<td class="h" style="text-align: center;">TOT</td>
+			<td style="text-align: center;" colspan="4"></td>
+			<td style="text-align: center;">${floatVoltTotal}</td>
+			<td style="text-align: center;">${battVoltStart}</td>
+			<td style="text-align: center;">${battVoltEnd}</td>
+			<td style="text-align: center;"></td>
+			<td style="text-align: center;">${battVoltAfter}</td>
+			<td style="text-align: center;"></td>
+		</tr>
+	`;
+
+	bodyParams["batteryTable"] = batteryTable;
+
+	await page.evaluate(({ bodyParams, tableLength }) => {
+		function setData(el, data) {
+			document.getElementById(el).textContent = data;
+		}
+
+		function setImage(el, data) {
+			document.getElementById(el).src = data;
+		}
+
+		function setHTML(el, data) {
+			document.getElementById(el).innerHTML = data;
+		}
+
+		setData("customer_name", bodyParams?.customer_name ? bodyParams.customer_name : "");
+		setData("fsr_number", bodyParams?.fsr_number ? bodyParams.fsr_number : "");
+		setData("completion_date", bodyParams?.completion_date ? bodyParams.completion_date : "");
+		setData("site_id", bodyParams?.site_id ? bodyParams.site_id : "");
+		setData("site_contact_person", bodyParams?.site_contact_person ? bodyParams.site_contact_person : "");
+		setData("contact_number", bodyParams?.contact_number ? bodyParams.contact_number : "");
+		setData("site_address", bodyParams?.site_address ? bodyParams.site_address : "");
+		setData("ups_model", bodyParams?.ups_model ? bodyParams.ups_model : "");
+		setData("ups_rating", bodyParams?.ups_rating ? bodyParams.ups_rating : "");
+		setData("ups_serial_number", bodyParams?.ups_serial_number ? bodyParams.ups_serial_number : "");
+
+		setData("maint_clr_avl_status_YES", bodyParams?.maint_clr_avl_status && bodyParams?.maint_clr_avl_status === 'YES' ? bodyParams.maint_clr_avl_status : "");
+		setData("maint_clr_avl_status_NO", bodyParams?.maint_clr_avl_status && bodyParams?.maint_clr_avl_status === 'NO' ?  bodyParams.maint_clr_avl_status : "");
+		setData("maint_clr_specify", bodyParams?.maint_clr_specify ? bodyParams.maint_clr_specify : "");
+		setData("cool_vent_maint_status_YES", bodyParams?.cool_vent_maint_status && bodyParams?.cool_vent_maint_status === 'YES' ? bodyParams.cool_vent_maint_status : "");
+		setData("cool_vent_maint_status_NO", bodyParams?.cool_vent_maint_status && bodyParams?.cool_vent_maint_status === 'NO' ?  bodyParams.cool_vent_maint_status : "");
+		setData("cool_vent_specify", bodyParams?.cool_vent_specify ? bodyParams.cool_vent_specify : "");
+		setData("dust_lvl_high_status_YES", bodyParams?.dust_lvl_high_status && bodyParams?.dust_lvl_high_status === 'YES' ? bodyParams.dust_lvl_high_status : "");
+		setData("dust_lvl_high_status_NO", bodyParams?.dust_lvl_high_status && bodyParams?.dust_lvl_high_status === 'NO' ?  bodyParams.dust_lvl_high_status : "");
+		setData("dust_lvl_specify", bodyParams?.dust_lvl_specify ? bodyParams.dust_lvl_specify : "");
+		setData("water_seep_seen_status_YES", bodyParams?.water_seep_seen_status && bodyParams?.water_seep_seen_status === 'YES' ? bodyParams.water_seep_seen_status : "");
+		setData("water_seep_seen_status_NO", bodyParams?.water_seep_seen_status && bodyParams?.water_seep_seen_status === 'NO' ?  bodyParams.water_seep_seen_status : "");
+		setData("water_seep_specify", bodyParams?.water_seep_specify ? bodyParams.water_seep_specify : "");
+		setData("moist_sign_high_status_YES", bodyParams?.moist_sign_high_status && bodyParams?.moist_sign_high_status === 'YES' ? bodyParams.moist_sign_high_status : "");
+		setData("moist_sign_high_status_NO", bodyParams?.moist_sign_high_status && bodyParams?.moist_sign_high_status === 'NO' ?  bodyParams.moist_sign_high_status : "");
+		setData("moist_sign_specify", bodyParams?.moist_sign_specify ? bodyParams.moist_sign_specify : "");
+		setData("unauth_entry_prot_status_YES", bodyParams?.unauth_entry_prot_status && bodyParams?.unauth_entry_prot_status === 'YES' ? bodyParams.unauth_entry_prot_status : "");
+		setData("unauth_entry_prot_status_NO", bodyParams?.unauth_entry_prot_status && bodyParams?.unauth_entry_prot_status === 'NO' ?  bodyParams.unauth_entry_prot_status : "");
+		setData("unauth_entry_specify", bodyParams?.unauth_entry_specify ? bodyParams.unauth_entry_specify : "");
+		setData("serial_no_vis_status_YES", bodyParams?.serial_no_vis_status && bodyParams?.serial_no_vis_status === 'YES' ? bodyParams.serial_no_vis_status : "");
+		setData("serial_no_vis_status_NO", bodyParams?.serial_no_vis_status && bodyParams?.serial_no_vis_status === 'NO' ?  bodyParams.serial_no_vis_status : "");
+		setData("serial_no_specify", bodyParams?.serial_no_specify ? bodyParams.serial_no_specify : "");
+		setData("fire_safe_inst_status_YES", bodyParams?.fire_safe_inst_status && bodyParams?.fire_safe_inst_status === 'YES' ? bodyParams.fire_safe_inst_status : "");
+		setData("fire_safe_inst_status_NO", bodyParams?.fire_safe_inst_status && bodyParams?.fire_safe_inst_status === 'NO' ?  bodyParams.fire_safe_inst_status : "");
+		setData("fire_safe_specify", bodyParams?.fire_safe_specify ? bodyParams.fire_safe_specify : "");
+		setData("prot_mat_provided_status_YES", bodyParams?.prot_mat_provided_status && bodyParams?.prot_mat_provided_status === 'YES' ? bodyParams.prot_mat_provided_status : "");
+		setData("prot_mat_provided_status_NO", bodyParams?.prot_mat_provided_status && bodyParams?.prot_mat_provided_status === 'NO' ?  bodyParams.prot_mat_provided_status : "");
+		setData("prot_mat_specify", bodyParams?.prot_mat_specify ? bodyParams.prot_mat_specify : "");
+
+		setData("power_cable_layout_status_YES", bodyParams?.power_cable_layout_status && bodyParams?.power_cable_layout_status === 'YES' ? bodyParams.power_cable_layout_status : "");
+		setData("power_cable_layout_status_NO", bodyParams?.power_cable_layout_status && bodyParams?.power_cable_layout_status === 'NO' ?  bodyParams.power_cable_layout_status : "");
+		setData("power_cable_layout_specify", bodyParams?.power_cable_layout_specify ? bodyParams.power_cable_layout_specify : "");
+		setData("cable_dmg_signs_status_YES", bodyParams?.cable_dmg_signs_status && bodyParams?.cable_dmg_signs_status === 'YES' ? bodyParams.cable_dmg_signs_status : "");
+		setData("cable_dmg_signs_status_NO", bodyParams?.cable_dmg_signs_status && bodyParams?.cable_dmg_signs_status === 'NO' ?  bodyParams.cable_dmg_signs_status : "");
+		setData("cable_dmg_signs_specify", bodyParams?.cable_dmg_signs_specify ? bodyParams.cable_dmg_signs_specify : "");
+		setData("power_cable_tight_status_YES", bodyParams?.power_cable_tight_status && bodyParams?.power_cable_tight_status === 'YES' ? bodyParams.power_cable_tight_status : "");
+		setData("power_cable_tight_status_NO", bodyParams?.power_cable_tight_status && bodyParams?.power_cable_tight_status === 'NO' ?  bodyParams.power_cable_tight_status : "");
+		setData("power_cable_tight_specify", bodyParams?.power_cable_tight_specify ? bodyParams.power_cable_tight_specify : "");
+		setData("power_outage_freq_specify", bodyParams?.power_outage_freq_specify ? bodyParams.power_outage_freq_specify : "");
+		setData("daily_pwr_outage_val", bodyParams?.daily_pwr_outage_val ? bodyParams.daily_pwr_outage_val : "");
+
+		setData("bat_dmg_insp_status_YES", bodyParams?.bat_dmg_insp_status && bodyParams?.bat_dmg_insp_status === 'YES' ? bodyParams.bat_dmg_insp_status : "");
+		setData("bat_dmg_insp_status_NO", bodyParams?.bat_dmg_insp_status && bodyParams?.bat_dmg_insp_status === 'NO' ?  bodyParams.bat_dmg_insp_status : "");
+		setData("bat_dmg_specify", bodyParams?.bat_dmg_specify ? bodyParams.bat_dmg_specify : "");
+		setData("bat_interlinks_tight_status_YES", bodyParams?.bat_interlinks_tight_status && bodyParams?.bat_interlinks_tight_status === 'YES' ? bodyParams.bat_interlinks_tight_status : "");
+		setData("bat_interlinks_tight_status_NO", bodyParams?.bat_interlinks_tight_status && bodyParams?.bat_interlinks_tight_status === 'NO' ?  bodyParams.bat_interlinks_tight_status : "");
+		setData("bat_interlinks_tight_specify", bodyParams?.bat_interlinks_tight_specify ? bodyParams.bat_interlinks_tight_specify : "");
+		setData("bat_corr_cleaned_status_YES", bodyParams?.bat_corr_cleaned_status && bodyParams?.bat_corr_cleaned_status === 'YES' ? bodyParams.bat_corr_cleaned_status : "");
+		setData("bat_corr_cleaned_status_NO", bodyParams?.bat_corr_cleaned_status && bodyParams?.bat_corr_cleaned_status === 'NO' ?  bodyParams.bat_corr_cleaned_status : "");
+		setData("bat_corr_cleaned_specify", bodyParams?.bat_corr_cleaned_specify ? bodyParams.bat_corr_cleaned_specify : "");
+		setData("bat_water_lvl_chk_status_YES", bodyParams?.bat_water_lvl_chk_status && bodyParams?.bat_water_lvl_chk_status === 'YES' ? bodyParams.bat_water_lvl_chk_status : "");
+		setData("bat_water_lvl_chk_status_NO", bodyParams?.bat_water_lvl_chk_status && bodyParams?.bat_water_lvl_chk_status === 'NO' ?  bodyParams.bat_water_lvl_chk_status : "");
+		setData("bat_water_lvl_specify", bodyParams?.bat_water_lvl_specify ? bodyParams.bat_water_lvl_specify : "");
+
+		setData("utility_input_volt_vn_p", bodyParams?.utility_input_volt_vn_p ? bodyParams.utility_input_volt_vn_p : "");
+		setData("utility_input_volt_vn_e", bodyParams?.utility_input_volt_vn_e ? bodyParams.utility_input_volt_vn_e : "");
+		setData("utility_output_volt_vn_p", bodyParams?.utility_output_volt_vn_p ? bodyParams.utility_output_volt_vn_p : "");
+		setData("utility_output_volt_vn_e", bodyParams?.utility_output_volt_vn_e ? bodyParams.utility_output_volt_vn_e : "");
+		setData("bat_output_volt_vn_p", bodyParams?.bat_output_volt_vn_p ? bodyParams.bat_output_volt_vn_p : "");
+		setData("bat_output_volt_vn_e", bodyParams?.bat_output_volt_vn_e ? bodyParams.bat_output_volt_vn_e : "");
+
+		setData("ups_load_lvl_ind_status_YES", bodyParams?.ups_load_lvl_ind_status && bodyParams?.ups_load_lvl_ind_status === 'YES' ? bodyParams.ups_load_lvl_ind_status : "");
+		setData("ups_load_lvl_ind_status_NO", bodyParams?.ups_load_lvl_ind_status && bodyParams?.ups_load_lvl_ind_status === 'NO' ?  bodyParams.ups_load_lvl_ind_status : "");
+		setData("ups_load_lvl_ind_specify", bodyParams?.ups_load_lvl_ind_specify ? bodyParams.ups_load_lvl_ind_specify : "");
+		setData("fan_speed_smooth_status_YES", bodyParams?.fan_speed_smooth_status && bodyParams?.fan_speed_smooth_status === 'YES' ? bodyParams.fan_speed_smooth_status : "");
+		setData("fan_speed_smooth_status_NO", bodyParams?.fan_speed_smooth_status && bodyParams?.fan_speed_smooth_status === 'NO' ?  bodyParams.fan_speed_smooth_status : "");
+		setData("fan_speed_smooth_specify", bodyParams?.fan_speed_smooth_specify ? bodyParams.fan_speed_smooth_specify : "");
+		setData("ups_fault_ind_status_YES", bodyParams?.ups_fault_ind_status && bodyParams?.ups_fault_ind_status === 'YES' ? bodyParams.ups_fault_ind_status : "");
+		setData("ups_fault_ind_status_NO", bodyParams?.ups_fault_ind_status && bodyParams?.ups_fault_ind_status === 'NO' ?  bodyParams.ups_fault_ind_status : "");
+		setData("ups_fault_ind_specify", bodyParams?.ups_fault_ind_specify ? bodyParams.ups_fault_ind_specify : "");
+		setData("ups_noise_abn_status_YES", bodyParams?.ups_noise_abn_status && bodyParams?.ups_noise_abn_status === 'YES' ? bodyParams.ups_noise_abn_status : "");
+		setData("ups_noise_abn_status_NO", bodyParams?.ups_noise_abn_status && bodyParams?.ups_noise_abn_status === 'NO' ?  bodyParams.ups_noise_abn_status : "");
+		setData("ups_noise_abn_specify", bodyParams?.ups_noise_abn_specify ? bodyParams.ups_noise_abn_specify : "");
+		setData("vent_clean_done_status_YES", bodyParams?.vent_clean_done_status && bodyParams?.vent_clean_done_status === 'YES' ? bodyParams.vent_clean_done_status : "");
+		setData("vent_clean_done_status_NO", bodyParams?.vent_clean_done_status && bodyParams?.vent_clean_done_status === 'NO' ?  bodyParams.vent_clean_done_status : "");
+		setData("vent_clean_specify", bodyParams?.vent_clean_specify ? bodyParams.vent_clean_specify : "");
+
+		setHTML("general_observation", bodyParams?.general_observation ? `<span>${bodyParams.general_observation}</span>` : "");
+		setData("customer_comments", bodyParams?.customer_comments ? bodyParams.customer_comments : "");
+		setData("engineer_name", bodyParams?.engineer_name ? bodyParams.engineer_name : "");
+		setData("engineer_date", bodyParams?.engineer_date ? bodyParams.engineer_date : "");
+		setData("customerName", bodyParams?.customer_name ? bodyParams.customer_name : "");
+		setData("customer_date", bodyParams?.customer_date ? bodyParams.customer_date : "");
+		setHTML("batteryTable", bodyParams.batteryTable);
+		setHTML("daily", `<span class=\"m-l-7\">Daily</span><div style=\"width: 1.5rem; height: 1rem; border: 1px solid black; background-color: ${bodyParams?.power_outage_freq && bodyParams?.power_outage_freq === 'DAILY' ? '#c8ccc9' : 'unset'};\"></div>`);
+		setHTML("weekly", `<span class=\"m-l-7\">Weekly</span><div style=\"width: 1.5rem; height: 1rem; border: 1px solid black; background-color: ${bodyParams?.power_outage_freq && bodyParams?.power_outage_freq === 'WEEKLY' ? '#c8ccc9' : 'unset'};\"></div>`);
+
+		const enginnerSignatureContent = `
+			<img src="${bodyParams?.engineerSignature ? bodyParams.engineerSignature : ""}" class="full ${tableLength >= 35 && tableLength < 38 ? "m-35" : ""}" style="width:${!bodyParams?.engineerSignature ? '0' : '100%'}; height: ${!bodyParams?.engineerSignature ? '0' : '4rem'};" />
+		`;
+		const customerSignatureContent = `
+			<img src="${bodyParams?.customerSignature ? bodyParams.customerSignature : ""}" class="full ${tableLength >= 28 && !(tableLength >= 35) ? "m-28" : ""}" style="width:${!bodyParams?.customerSignature ? '0' : '100%'}; height: ${!bodyParams?.customerSignature ? '0' : '4rem'};" />
+		`;
+
+		setHTML('engineer_signature', enginnerSignatureContent);
+		setHTML('customer_signature', customerSignatureContent);
+	}, { bodyParams, tableLength });
+
+	return await page.pdf({
+		margin: {
+			top: '14mm',
+			right: '5mm',
+			bottom: '8mm',
+			left: '5mm',
+		},
+		displayHeaderFooter: true,
+		headerTemplate: `<div style="display: flex; width: 100%; gap: 30px; font-size: 14px;">
+				<div style="display: flex; margin-left: 30px;">
+					<img
+						height="20px"
+						src=${logo}
+					/>
+				</div>
+				<div style="font-weight: 900; margin-top: 2px;">PREVENTIVE MAINTENANCE CHECK LIST</div>
+            </div>`,
+		footerTemplate: `<div style=\"font-size: 10px; font-weight: bold; text-align: center; margin-left: 45%;\">Page <span class=\"pageNumber\"></span> of ${tableLength > 20 ? 3 : 2}</div>`,
+		format: 'A4',
+		printBackground: true,
+	});
+}
+
+//Dcps checklist
+const generateDcpsPDF = async (page, bodyParams) => {
+	if (bodyParams.di_aralm_status && Array.isArray(bodyParams.di_aralm_status)) {
+		bodyParams.alarmStatus = generateDCPSAlarmStatus(bodyParams.di_aralm_status);
+	}
+
+    await page.evaluate(({ bodyParams }) => {
+        function setData(el, data) {
+            document.getElementById(el).textContent = data;
+        }
+
+        function setImage(el, data) {
+            document.getElementById(el).src = data;
+        }
+
+        function setHTML(el, data) {
+            document.getElementById(el).innerHTML = data;
+        }
+        setData("customerName", bodyParams?.customer_name ? bodyParams.customer_name : "")
+        setData("dateOfPM", bodyParams?.date_of_pm ? bodyParams.date_of_pm : "")
+        setData("siteAddress", bodyParams?.site_address ? bodyParams.site_address : "")
+        setData("siteId", bodyParams?.site_id ? bodyParams.site_id : "")
+        setData("siteName", bodyParams?.site_name ? bodyParams.site_name : "")
+        setData("siteEngineerName", bodyParams?.site_engineer_name ? bodyParams.site_engineer_name : "")
+        setData("facilityType", bodyParams?.facility_type ? bodyParams.facility_type : "")
+        setData("customerEmail", bodyParams?.customer_email_id ? bodyParams.customer_email_id : "")
+        setData("contactNo", bodyParams?.contact_no ? bodyParams.contact_no : "")
+        setData("systemModel", bodyParams?.system_model ? bodyParams.system_model : "")
+        setData("systemSerialNo", bodyParams?.system_serial_no ? bodyParams.system_serial_no : "")
+        setData("systemType", bodyParams?.system_type ? bodyParams.system_type : "")
+        setData("acSource", bodyParams?.no_of_ac_source ? bodyParams.no_of_ac_source : "")
+        setData("controllerModel", bodyParams?.controller_model_version ? bodyParams.controller_model_version : "")
+        setData("noOfRectifier", bodyParams?.no_of_rectifier ? bodyParams.no_of_rectifier : "")
+        setData("rectifierModelNo", bodyParams?.rectifier_model_no ? bodyParams.rectifier_model_no : "")
+        setData("batteryCapacity", bodyParams?.battery_capacity ? bodyParams.battery_capacity : "")
+        setData("batteryType", bodyParams?.battery_type ? bodyParams.battery_type : "")
+        setData("noOfBatteryCell", bodyParams?.no_of_battery_cell ? bodyParams.no_of_battery_cell : "")
+        setData("batteryVendor", bodyParams?.battery_vendor ? bodyParams.battery_vendor : "")
+        setData("noOfBatteryBank", bodyParams?.no_of_battery_bank ? bodyParams.no_of_battery_bank : "")
+
+        setData("acSwitch_OK", bodyParams?.ac_input_mcb_off && bodyParams.ac_input_mcb_off === 'OK'  ?  "OK" : "")
+        setData("acSwitch_NOT_OK", bodyParams?.ac_input_mcb_off && bodyParams.ac_input_mcb_off === 'NOT_OK'  ?  "NOT OK" : "")
+        setData("batteryLoad_OK", bodyParams?.load_transfer_battery && bodyParams.load_transfer_battery === 'YES'  ?  "YES" : "")
+        setData("batteryLoad_NOT_OK", bodyParams?.load_transfer_battery && bodyParams.load_transfer_battery === 'NO'  ?  "NO" : "")
+        setData("rectifiersSwitch_OK", bodyParams?.rectifier_mcb_off && bodyParams.rectifier_mcb_off === 'YES'  ?  "YES" : "")
+        setData("rectifiersSwitch_NOT_OK", bodyParams?.rectifier_mcb_off && bodyParams.rectifier_mcb_off === 'NO'  ?  "NO" : "")
+        setData("batteryFuse_OK", bodyParams?.battery_disconnect && bodyParams.battery_disconnect === 'YES'  ?  "YES" : "")
+        setData("batteryFuse_NOT_OK", bodyParams?.battery_disconnect && bodyParams.battery_disconnect === 'NO'  ?  "NO" : "")
+        setData("checkMoisture_OK", bodyParams?.moisture_check && bodyParams.moisture_check === 'OK'  ?  "OK" : "")
+        setData("checkMoisture_NOT_OK", bodyParams?.moisture_check && bodyParams.moisture_check === 'NOT_OK'  ?  "NOT OK" : "")
+        setData("inspectEnclosure_OK", bodyParams?.enclosure_inspect && bodyParams.enclosure_inspect === 'OK'  ?  "OK" : "")
+        setData("inspectEnclosure_NOT_OK", bodyParams?.enclosure_inspect && bodyParams.enclosure_inspect === 'NOT_OK'  ?  "NOT OK" : "")
+        setData("checkCables_OK", bodyParams?.cable_termination_check && bodyParams.cable_termination_check === 'TIGHT'  ?  "TIGHT" : "")
+        setData("checkCables_NOT_OK", bodyParams?.cable_termination_check && bodyParams.cable_termination_check === 'LOOSE'  ?  "LOOSE" : "")
+        setData("checkInsulationCables_OK", bodyParams?.cable_insulation_check && bodyParams.cable_insulation_check === 'OK'  ?  "OK" : "")
+        setData("checkInsulationCables_NOT_OK", bodyParams?.cable_insulation_check && bodyParams.cable_insulation_check === 'NOT_OK'  ?  "NOT OK" : "")
+        setData("mcbCondition_OK", bodyParams?.mcb_condition_check && bodyParams.mcb_condition_check === 'OK'  ?  "OK" : "")
+        setData("mcbCondition_NOT_OK", bodyParams?.mcb_condition_check && bodyParams.mcb_condition_check === 'NOT_OK'  ?  "NOT OK" : "")
+        setData("checkNuts_OK", bodyParams?.nuts_bolts_check && bodyParams.nuts_bolts_check === 'TIGHT'  ?  "TIGHT" : "")
+        setData("checkNuts_NOT_OK", bodyParams?.nuts_bolts_check && bodyParams.nuts_bolts_check === 'LOOSE'  ?  "LOOSE" : "")
+        setData("cleanInteriors_OK", bodyParams?.interior_cleaning_check && bodyParams.interior_cleaning_check === 'OK'  ?  "OK" : "")
+        setData("cleanInteriors_NOT_OK", bodyParams?.interior_cleaning_check && bodyParams.interior_cleaning_check === 'NOT_OK'  ?  "NOT OK" : "")
+        setData("cleanRectifiers_OK", bodyParams?.rectifier_cleaning_check && bodyParams.rectifier_cleaning_check === 'OK'  ?  "OK" : "")
+        setData("cleanRectifiers_NOT_OK", bodyParams?.rectifier_cleaning_check && bodyParams.rectifier_cleaning_check === 'NOT_OK'  ?  "NOT OK" : "")
+        setData("macbAppropriateRating_OK", bodyParams?.mcb_fuse_rating_check && bodyParams.mcb_fuse_rating_check === 'YES'  ?  "YES" : "")
+        setData("macbAppropriateRating_NOT_OK", bodyParams?.mcb_fuse_rating_check && bodyParams.mcb_fuse_rating_check === 'NO'  ?  "NO" : "")
+        setData("checkGrounding_OK", bodyParams?.grounding_check && bodyParams.grounding_check === 'YES'  ?  "YES" : "")
+        setData("checkGrounding_NOT_OK", bodyParams?.grounding_check && bodyParams.grounding_check === 'NO'  ?  "NO" : "")
+        setData("smpsBatteryConnection_OK", bodyParams?.battery_polarity_check && bodyParams.battery_polarity_check === 'YES'  ?  "YES" : "")
+        setData("smpsBatteryConnection_NOT_OK", bodyParams?.battery_polarity_check && bodyParams.battery_polarity_check === 'NO'  ?  "NO" : "")
+        setData("hrcBatteryFuse_OK", bodyParams?.hrc_battery_fuse_insert && bodyParams.hrc_battery_fuse_insert === 'YES'  ?  "YES" : "")
+        setData("hrcBatteryFuse_NOT_OK", bodyParams?.hrc_battery_fuse_insert && bodyParams.hrc_battery_fuse_insert === 'NO'  ?  "NO" : "")
+        setData("acRectifierSwitch_OK", bodyParams?.ac_rectifier_mcb_on && bodyParams.ac_rectifier_mcb_on === 'YES'  ?  "YES" : "")
+        setData("acRectifierSwitch_NOT_OK", bodyParams?.ac_rectifier_mcb_on && bodyParams.ac_rectifier_mcb_on === 'NO'  ?  "NO" : "")
+        setData("mcbSwitch_OK", bodyParams?.controller_mcb_on && bodyParams.controller_mcb_on === 'YES'  ?  "YES" : "")
+        setData("mcbSwitch_NOT_OK", bodyParams?.controller_mcb_on && bodyParams.controller_mcb_on === 'NO'  ?  "NO" : "")
+        setData("loadMCB_OK", bodyParams?.load_mcb_on && bodyParams.load_mcb_on === 'YES'  ?  "YES" : "")
+        setData("loadMCB_NOT_OK", bodyParams?.load_mcb_on && bodyParams.load_mcb_on === 'NO'  ?  "NO" : "")
+        setData("healthCheck_OK", bodyParams?.surge_protection_check && bodyParams.surge_protection_check === 'OK'  ?  "OK" : "")
+        setData("healthCheck_NOT_OK", bodyParams?.surge_protection_check && bodyParams.surge_protection_check === 'NOT_OK'  ?  "NOT OK" : "")
+
+		setData("RY", bodyParams?.ac_incoming_pwr_volt_ry ? bodyParams.ac_incoming_pwr_volt_ry : "")
+		setData("YB", bodyParams?.ac_incoming_pwr_volt_yb ? bodyParams.ac_incoming_pwr_volt_yb : "")
+		setData("BR", bodyParams?.ac_incoming_pwr_volt_br ? bodyParams.ac_incoming_pwr_volt_br : "")
+		setData("RN", bodyParams?.ac_incoming_pwr_volt_rn ? bodyParams.ac_incoming_pwr_volt_rn : "")
+		setData("YN", bodyParams?.ac_incoming_pwr_volt_yn ? bodyParams.ac_incoming_pwr_volt_yn : "")
+		setData("BN", bodyParams?.ac_incoming_pwr_volt_bn ? bodyParams.ac_incoming_pwr_volt_bn : "")
+		setData("dcFloatVoltage", bodyParams?.dc_output_voltage_float ? bodyParams.dc_output_voltage_float : "")
+		setData("dcBoostVoltage", bodyParams?.dc_output_voltage_boost ? bodyParams.dc_output_voltage_boost : "")
+		setData("dcLoadCurrent", bodyParams?.dc_load_current ? bodyParams.dc_load_current : "")
+		setData("earthVoltage", bodyParams?.neutral_earth_voltage ? bodyParams.neutral_earth_voltage : "")
+		setData("batteryCharging", bodyParams?.battery_char_cur_limit && bodyParams.battery_char_cur_limit === 'YES'  ?  "YES" : "NO")
+
+        setData("mainFails_OK", bodyParams?.alarm_mains_fail && bodyParams.alarm_mains_fail === 'OK'  ?  "OK" : "")
+        setData("mainFails_NOT_OK", bodyParams?.alarm_mains_fail && bodyParams.alarm_mains_fail === 'NOT_OK'  ?  "NOT OK" : "")
+        setData("batteryDischarge_OK", bodyParams?.alarm_battery_discharge && bodyParams.alarm_battery_discharge === 'OK'  ?  "OK" : "")
+        setData("batteryDischarge_NOT_OK", bodyParams?.alarm_battery_discharge && bodyParams.alarm_battery_discharge === 'NOT_OK'  ?  "NOT OK" : "")
+        setData("batteryFuseAlarm_OK", bodyParams?.alarm_battery_fuse && bodyParams.alarm_battery_fuse === 'OK'  ?  "OK" : "")
+        setData("batteryFuseAlarm_NOT_OK", bodyParams?.alarm_battery_fuse && bodyParams.alarm_battery_fuse === 'NOT_OK'  ?  "NOT OK" : "")
+        setData("loadFuseAlarm_OK", bodyParams?.alarm_load_fuse && bodyParams.alarm_load_fuse === 'OK'  ?  "OK" : "")
+        setData("loadFuseAlarm_NOT_OK", bodyParams?.alarm_load_fuse && bodyParams.alarm_load_fuse === 'NOT_OK'  ?  "NOT OK" : "")
+        setData("lowHighDC_OK", bodyParams?.alarm_dc_low_high && bodyParams.alarm_dc_low_high === 'OK'  ?  "OK" : "")
+        setData("lowHighDC_NOT_OK", bodyParams?.alarm_dc_low_high && bodyParams.alarm_dc_low_high === 'NOT_OK'  ?  "NOT OK" : "")
+        setData("LLVD/BLVD_OK", bodyParams?.alarm_llvd_blvd && bodyParams.alarm_llvd_blvd === 'OK'  ?  "OK" : "")
+        setData("LLVD/BLVD_NOT_OK", bodyParams?.alarm_llvd_blvd && bodyParams.alarm_llvd_blvd === 'NOT_OK'  ?  "NOT OK" : "")
+        setData("rectifierFail_OK", bodyParams?.alarm_rectifier_fail && bodyParams.alarm_rectifier_fail === 'OK'  ?  "OK" : "")
+        setData("rectifierFail_NOT_OK", bodyParams?.alarm_rectifier_fail && bodyParams.alarm_rectifier_fail === 'NOT_OK'  ?  "NOT OK" : "")
+        setData("PAUtoM523SFail_OK", bodyParams?.alarm_pau_m523s_com_fail && bodyParams.alarm_pau_m523s_com_fail === 'OK'  ?  "OK" : "")
+        setData("PAUtoM523SFail_NOT_OK", bodyParams?.alarm_pau_m523s_com_fail && bodyParams.alarm_pau_m523s_com_fail === 'NOT_OK'  ?  "NOT OK" : "")
+        setData("PAUtoBMSFail_OK", bodyParams?.alarm_pau_bms_com_fail && bodyParams.alarm_pau_bms_com_fail === 'OK'  ?  "OK" : "")
+        setData("PAUtoBMSFail_NOT_OK", bodyParams?.alarm_pau_bms_com_fail && bodyParams.alarm_pau_bms_com_fail === 'NOT_OK'  ?  "NOT OK" : "")
+        setData("anyBMSFail_OK", bodyParams?.alarm_bms_module_com_fail && bodyParams.alarm_bms_module_com_fail === 'OK'  ?  "OK" : "")
+        setData("anyBMSFail_NOT_OK", bodyParams?.alarm_bms_module_com_fail  && bodyParams.alarm_bms_module_com_fail === 'NOT_OK'  ?  "NOT OK" : "")
+        setData("rectifierComFail_OK", bodyParams?.alarm_rectifier_com_fail && bodyParams.alarm_rectifier_com_fail === 'OK'  ?  "OK" : "")
+        setData("rectifierComFail_NOT_OK", bodyParams?.alarm_rectifier_com_fail && bodyParams.alarm_rectifier_com_fail === 'NOT_OK'  ?  "NOT OK" : "")
+
+		// DI Alarm Status
+        setData("SMPSAlarm_OK", bodyParams?.no_active_alarm_controller && bodyParams.no_active_alarm_controller === 'OK'  ?  "OK" : "")
+        setData("SMPSAlarm_NOT_OK", bodyParams?.no_active_alarm_controller && bodyParams.no_active_alarm_controller === 'NOT_OK'  ?  "NOT OK" : "")
+        setData("rectifierData", bodyParams?.additional_rectifier_data ? bodyParams.additional_rectifier_data : "")
+        setData("otherObservation", bodyParams?.other_observation ? bodyParams.other_observation : "")
+       
+
+		const enginnerSignatureContent = `
+			<div style="display: flex; align-items: center; width: 100%;">
+				<div style="width: 10%; text-align: center; padding: 0.2rem;" class="times-bold">Signature</div>
+				<div style="display: flex; flex-direction: column; width: 30%; height: 8rem;" class="times-bold">
+					<div style=" border-bottom: 1px solid black; padding: 0.2rem; height: 1.5rem; border-left: 1px solid black; border-right: 1px solid black; text-align: center;">Name, Signature, Mobile No. and Email of Vertiv Representative</div>
+					<div style="height: 6rem; display: flex; justify-content: center; align-items: center; padding: 0.2rem; height: 6rem; border-left: 1px solid black;  border-right: 1px solid black;">
+						${bodyParams?.engineerSignature ? `<img src="${bodyParams.engineerSignature}" style="height: 5.75rem; width: 70%;" />` : '<div></div>'}
+					</div>
+				</div>
+				<div style="display: flex; flex-direction: column; width: 30%; height: 8rem;" class="times-bold">
+					<div style=" border-bottom: 1px solid black; padding: 0.2rem; height: 1.5rem; border-right: 1px solid black; text-align: center;">Name, Signature, Mobile No. and Email of Customer</div>
+					<div style="display: flex; justify-content: center; align-items: center; padding: 0.2rem; height: 6rem; border-right: 1px solid black;">${bodyParams?.signature ? `<img src="${bodyParams?.signature}" style="height: 5.75rem; width: 70%;" />` : '<div></div>'}
+				</div>
+				</div>
+				<div style="display: flex; flex-direction: column; width: 30%; height: 8rem;">
+					<div style="border-bottom: 1px solid black; padding: 0.2rem; height: 1.5rem; text-align: center;" class="times-bold">Customer Remarks</div>
+					<div style="font-size:9px; height: 5.75rem; padding: 0.2rem;" class="seven_line">${bodyParams.customer_comments}</div>
+				</div>
+			</div>
+		`
+
+		setHTML('signatureContent', enginnerSignatureContent);
+
+		//Alaram Status
+		if (bodyParams.alarmStatus && Object.values(bodyParams.alarmStatus).length) {
+			Object.entries(bodyParams.alarmStatus).forEach(([key, value]) => {
+				setData(`${key}`, value || '');
+			})
+		}
+    }, { bodyParams });
+
+    return await page.pdf({
+        margin: {
+            top: '14mm',
+            right: '5mm',
+            bottom: '8mm',
+            left: '5mm',
+        },
+        format: 'A4',
+        printBackground: true,
+    });
+}
+
+//air checklist
+const generateThermalPDF = async (page, bodyParams) => {
+    await page.evaluate((bodyParams) => {
+        function setData(el, data) {
+            document.getElementById(el).textContent = data;
+        }
+
+        function setImage(el, data) {
+            document.getElementById(el).src = data;
+        }
+
+        function setHTML(el, data) {
+            document.getElementById(el).innerHTML = data;
+        }
+        setData("customerName", bodyParams?.customer_name ? bodyParams.customer_name : "")
+        setData("fsrNumber", bodyParams?.fsr_number ? bodyParams.fsr_number : "")
+        setData("date", bodyParams?.completion_date ? bodyParams.completion_date : "")
+        setData("model", bodyParams?.MODEL ? bodyParams.MODEL : "")
+        setData("serialNumber", bodyParams?.SERIAL_NUMBER ? bodyParams.SERIAL_NUMBER : "")
+        // FAN SECTION
+        setData("FS_ROTATION_STATUS_OK", bodyParams?.FS_ROTATION_STATUS && bodyParams?.FS_ROTATION_STATUS == 'OK' ? bodyParams.FS_ROTATION_STATUS : "")
+        setData("FS_ROTATION_STATUS_NOT_OK", bodyParams?.FS_ROTATION_STATUS && bodyParams?.FS_ROTATION_STATUS === 'NOT_OK' ?  "NOT OK" : "")
+        setHTML("FS_ROTATION_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.FS_ROTATION_STATUS && bodyParams?.FS_ROTATION_STATUS === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("FS_ROTATION_SPECIFY", bodyParams?.FS_ROTATION_SPECIFY ? bodyParams.FS_ROTATION_SPECIFY : "")
+
+        setData("FS_MOTORMOUNT_STATUS_OK", bodyParams?.FS_MOTORMOUNT_STATUS && bodyParams?.FS_MOTORMOUNT_STATUS == 'OK' ? bodyParams.FS_MOTORMOUNT_STATUS : "")
+        setData("FS_MOTORMOUNT_STATUS_NOT_OK", bodyParams?.FS_MOTORMOUNT_STATUS && bodyParams?.FS_MOTORMOUNT_STATUS == 'NOT_OK' ? "NOT OK" : "")
+		setHTML("FS_MOTORMOUNT_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.FS_MOTORMOUNT_STATUS && bodyParams?.FS_MOTORMOUNT_STATUS === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("FS_MOTORMOUNT_SPECIFY", bodyParams?.FS_MOTORMOUNT_SPECIFY ? bodyParams.FS_MOTORMOUNT_SPECIFY : "")
+
+        setData("FS_FANBELT_STATUS_OK", bodyParams?.FS_FANBELT_STATUS && bodyParams?.FS_FANBELT_STATUS === 'OK' ? bodyParams.FS_FANBELT_STATUS : "")
+        setData("FS_FANBELT_STATUS_NOT_OK", bodyParams?.FS_FANBELT_STATUS && bodyParams?.FS_FANBELT_STATUS == 'NOT_OK' ?  "NOT OK" : "")
+		setHTML("FS_FANBELT_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.FS_FANBELT_STATUS && bodyParams?.FS_FANBELT_STATUS === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("FS_FANBELT_SPECIFY", bodyParams?.FS_FANBELT_SPECIFY ? bodyParams.FS_FANBELT_SPECIFY : "")
+
+        setData("FS_INSULATION_STATUS_OK", bodyParams?.FS_INSULATION_STATUS && bodyParams?.FS_INSULATION_STATUS === 'OK' ? bodyParams.FS_INSULATION_STATUS : "")
+        setData("FS_INSULATION_STATUS_NOT_OK", bodyParams?.FS_INSULATION_STATUS && bodyParams?.FS_INSULATION_STATUS === 'NOT_OK' ?  "NOT OK" : "")
+		setHTML("FS_INSULATION_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.FS_INSULATION_STATUS && bodyParams?.FS_INSULATION_STATUS === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("FS_INSULATION_SPECIFY", bodyParams?.FS_INSULATION_SPECIFY ? bodyParams.FS_INSULATION_SPECIFY : "")
+
+        setData("FS_IMPELLERCLEAN_STATUS_OK", bodyParams?.FS_IMPELLERCLEAN_STATUS && bodyParams?.FS_IMPELLERCLEAN_STATUS === 'OK' ? bodyParams.FS_IMPELLERCLEAN_STATUS : "")
+        setData("FS_IMPELLERCLEAN_STATUS_NOT_OK", bodyParams?.FS_IMPELLERCLEAN_STATUS && bodyParams?.FS_IMPELLERCLEAN_STATUS === 'NOT_OK' ?  "NOT OK" : "")
+		setHTML("FS_IMPELLERCLEAN_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.FS_IMPELLERCLEAN_STATUS && bodyParams?.FS_IMPELLERCLEAN_STATUS === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("FS_IMPELLERCLEAN_SPECIFY", bodyParams?.FS_IMPELLERCLEAN_SPECIFY ? bodyParams.FS_IMPELLERCLEAN_SPECIFY : "")
+
+        setData("FS_AIRLEAK_STATUS_OK", bodyParams?.FS_AIRLEAK_STATUS && bodyParams?.FS_AIRLEAK_STATUS === 'YES' ? bodyParams.FS_AIRLEAK_STATUS : "")
+        setData("FS_AIRLEAK_STATUS_NOT_OK", bodyParams?.FS_AIRLEAK_STATUS && bodyParams?.FS_AIRLEAK_STATUS === 'NO' ?  bodyParams?.FS_AIRLEAK_STATUS : "")
+		setHTML("FS_AIRLEAK_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.FS_AIRLEAK_STATUS && bodyParams?.FS_AIRLEAK_STATUS === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("FS_AIRLEAK_SPECIFY", bodyParams?.FS_AIRLEAK_SPECIFY ? bodyParams.FS_AIRLEAK_SPECIFY : "")
+        // COMPRESSOR SECTION
+        setData("COMP_OIL_LEAKS_STATUS_OK", bodyParams?.COMP_OIL_LEAKS_STATUS && bodyParams?.COMP_OIL_LEAKS_STATUS === 'YES' ? bodyParams.COMP_OIL_LEAKS_STATUS : "")
+        setData("COMP_OIL_LEAKS_STATUS_NOT_OK", bodyParams?.COMP_OIL_LEAKS_STATUS && bodyParams?.COMP_OIL_LEAKS_STATUS === 'NO' ?  bodyParams.COMP_OIL_LEAKS_STATUS : "")
+		setHTML("COMP_OIL_LEAKS_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.COMP_OIL_LEAKS_STATUS && bodyParams?.COMP_OIL_LEAKS_STATUS === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("COMP_OIL_LEAKS_SPECIFY", bodyParams?.COMP_OIL_LEAKS_SPECIFY ? bodyParams.COMP_OIL_LEAKS_SPECIFY : "")
+
+        setData("COMP_VIBRATION_FREE_STATUS_OK", bodyParams?.COMP_VIBRATION_FREE_STATUS && bodyParams?.COMP_VIBRATION_FREE_STATUS === 'YES' ? bodyParams.COMP_VIBRATION_FREE_STATUS : "")
+        setData("COMP_VIBRATION_FREE_STATUS_NOT_OK", bodyParams?.COMP_VIBRATION_FREE_STATUS && bodyParams?.COMP_VIBRATION_FREE_STATUS === 'NO' ?  bodyParams?.COMP_VIBRATION_FREE_STATUS : "")
+		setHTML("COMP_VIBRATION_FREE_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.COMP_VIBRATION_FREE_STATUS && bodyParams?.COMP_VIBRATION_FREE_STATUS === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("COMP_VIBRATION_FREE_SPECIFY", bodyParams?.COMP_VIBRATION_FREE_SPECIFY ? bodyParams.COMP_VIBRATION_FREE_SPECIFY : "")
+
+        setData("COMP_WIRING_CONN_STATUS_OK", bodyParams?.COMP_WIRING_CONN_STATUS && bodyParams?.COMP_WIRING_CONN_STATUS === 'OK' ? bodyParams.COMP_WIRING_CONN_STATUS : "")
+        setData("COMP_WIRING_CONN_STATUS_NOT_OK", bodyParams?.COMP_WIRING_CONN_STATUS && bodyParams?.COMP_WIRING_CONN_STATUS === 'NOT_OK' ?  "NOT OK" : "")
+		setHTML("COMP_WIRING_CONN_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.COMP_WIRING_CONN_STATUS && bodyParams?.COMP_WIRING_CONN_STATUS === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("COMP_WIRING_CONN_SPECIFY", bodyParams?.COMP_WIRING_CONN_SPECIFY ? bodyParams.COMP_WIRING_CONN_SPECIFY : "")
+
+        setData("COMP_REFRIG_LINES_STATUS_OK", bodyParams?.COMP_REFRIG_LINES_STATUS && bodyParams?.COMP_REFRIG_LINES_STATUS === 'OK'  ? bodyParams.COMP_REFRIG_LINES_STATUS : "")
+        setData("COMP_REFRIG_LINES_STATUS_NOT_OK", bodyParams?.COMP_REFRIG_LINES_STATUS && bodyParams?.COMP_REFRIG_LINES_STATUS === 'NOT_OK'  ?  "NOT OK" : "")
+		setHTML("COMP_REFRIG_LINES_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.COMP_REFRIG_LINES_STATUS && bodyParams?.COMP_REFRIG_LINES_STATUS === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("COMP_REFRIG_LINES_SPECIFY", bodyParams?.COMP_REFRIG_LINES_SPECIFY ? bodyParams.COMP_REFRIG_LINES_SPECIFY : "")
+
+        setData("COMP_CRANKCASE_HEATER_STATUS_OK", bodyParams?.COMP_CRANKCASE_HEATER_STATUS && bodyParams?.COMP_CRANKCASE_HEATER_STATUS === 'OK'  ? bodyParams.COMP_CRANKCASE_HEATER_STATUS : "")
+        setData("COMP_CRANKCASE_HEATER_STATUS_NOT_OK", bodyParams?.COMP_CRANKCASE_HEATER_STATUS && bodyParams?.COMP_CRANKCASE_HEATER_STATUS === 'NOT_OK'  ?  "NOT OK" : "")
+		setHTML("COMP_CRANKCASE_HEATER_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.COMP_CRANKCASE_HEATER_STATUS && bodyParams?.COMP_CRANKCASE_HEATER_STATUS === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("COMP_CRANKCASE_HEATER_SPECIFY", bodyParams?.COMP_CRANKCASE_HEATER_SPECIFY ? bodyParams.COMP_CRANKCASE_HEATER_SPECIFY : "")
+
+        // ELECTRICAL PANEL
+        setData("EP_LOOSECONNECTIONS_STATUS_OK", bodyParams?.EP_LOOSECONNECTIONS_STATUS && bodyParams?.EP_LOOSECONNECTIONS_STATUS === 'OK'  ? bodyParams.EP_LOOSECONNECTIONS_STATUS : "")
+        setData("EP_LOOSECONNECTIONS_STATUS_NOT_OK", bodyParams?.EP_LOOSECONNECTIONS_STATUS && bodyParams?.EP_LOOSECONNECTIONS_STATUS === 'NOT_OK'  ?  "NOT OK" : "")
+		setHTML("EP_LOOSECONNECTIONS_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.EP_LOOSECONNECTIONS_STATUS && bodyParams?.EP_LOOSECONNECTIONS_STATUS === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("EP_LOOSECONNECTIONS_SPECIFY", bodyParams?.EP_LOOSECONNECTIONS_SPECIFY ? bodyParams.COMP_CRANKCASE_HEATER_SPECIFY : "")
+
+        setData("EP_RELAYCONTACTS_STATUS_OK", bodyParams?.EP_RELAYCONTACTS_STATUS && bodyParams?.EP_RELAYCONTACTS_STATUS === 'OK'  ? bodyParams.EP_RELAYCONTACTS_STATUS : "")
+        setData("EP_RELAYCONTACTS_STATUS_NOT_OK", bodyParams?.EP_RELAYCONTACTS_STATUS && bodyParams?.EP_RELAYCONTACTS_STATUS === 'NOT_OK'  ?  "NOT OK" : "")
+		setHTML("EP_RELAYCONTACTS_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.EP_RELAYCONTACTS_STATUS && bodyParams?.EP_RELAYCONTACTS_STATUS === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("EP_RELAYCONTACTS_SPECIFY", bodyParams?.EP_RELAYCONTACTS_SPECIFY ? bodyParams.COMP_CRANKCASE_HEATER_SPECIFY : "")
+
+        setData("EP_AMPERAGECHECK_STATUS_OK", bodyParams?.EP_AMPERAGECHECK_STATUS && bodyParams?.EP_AMPERAGECHECK_STATUS === 'YES'  ? bodyParams.EP_AMPERAGECHECK_STATUS : "")
+        setData("EP_AMPERAGECHECK_STATUS_NOT_OK", bodyParams?.EP_AMPERAGECHECK_STATUS && bodyParams?.EP_AMPERAGECHECK_STATUS === 'NO'  ?  bodyParams.EP_AMPERAGECHECK_STATUS : "")
+		setHTML("EP_AMPERAGECHECK_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.EP_AMPERAGECHECK_STATUS && bodyParams?.EP_AMPERAGECHECK_STATUS === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("EP_AMPERAGECHECK_SPECIFY", bodyParams?.EP_AMPERAGECHECK_SPECIFY ? bodyParams.EP_AMPERAGECHECK_SPECIFY : "")
+
+        // RECORDED AMPS
+        setData("TOTAL_CURRENT_R", bodyParams?.TOTAL_CURRENT_R ? bodyParams.TOTAL_CURRENT_R : "")
+        setData("TOTAL_CURRENT_Y", bodyParams?.TOTAL_CURRENT_Y ? bodyParams.TOTAL_CURRENT_Y : "")
+        setData("TOTAL_CURRENT_B", bodyParams?.TOTAL_CURRENT_B ? bodyParams.TOTAL_CURRENT_B : "")
+        setData("RA_LINEVOLTAGE_RY", bodyParams?.RA_LINEVOLTAGE_RY ? bodyParams.RA_LINEVOLTAGE_RY : "")
+        setData("RA_LINEVOLTAGE_YB", bodyParams?.RA_LINEVOLTAGE_YB ? bodyParams.RA_LINEVOLTAGE_YB : "")
+        setData("RA_LINEVOLTAGE_BR", bodyParams?.RA_LINEVOLTAGE_BR ? bodyParams.RA_LINEVOLTAGE_BR : "")
+        setData("RA_LINEVOLTAGE_EN", bodyParams?.RA_LINEVOLTAGE_EN ? bodyParams.RA_LINEVOLTAGE_EN : "")
+        setData("RA_LINEVOLTAGE_RN", bodyParams?.RA_LINEVOLTAGE_RN ? bodyParams.RA_LINEVOLTAGE_RN : "")
+        setData("RA_LINEVOLTAGE_YN", bodyParams?.RA_LINEVOLTAGE_YN ? bodyParams.RA_LINEVOLTAGE_YN : "")
+        setData("RA_LINEVOLTAGE_BN", bodyParams?.RA_LINEVOLTAGE_BN ? bodyParams.RA_LINEVOLTAGE_BN : "")
+        setData("TOTAL_FANS", bodyParams?.TOTAL_NO_OF_FANS ? bodyParams.TOTAL_NO_OF_FANS : "")
+        setData("TOTAL_CURRENT", bodyParams?.TOTAL_CURRENT ? bodyParams.TOTAL_CURRENT : "")
+        // MAIN FANS
+		setHTML("MAIN_FAN_1_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.RA_MAINFAN1 && bodyParams?.RA_MAINFAN1 === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("RA_MAINFAN1_R", bodyParams?.RA_MAINFAN1_R ? bodyParams.RA_MAINFAN1_R : "")
+        setData("RA_MAINFAN1_Y", bodyParams?.RA_MAINFAN1_Y ? bodyParams.RA_MAINFAN1_Y : "")
+        setData("RA_MAINFAN1_B", bodyParams?.RA_MAINFAN1_B ? bodyParams.RA_MAINFAN1_B : "")
+
+		setHTML("MAIN_FAN_2_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.RA_MAINFAN2 && bodyParams?.RA_MAINFAN2 === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("RA_MAINFAN2_R", bodyParams?.RA_MAINFAN2_R ? bodyParams.RA_MAINFAN2_R : "")
+        setData("RA_MAINFAN2_Y", bodyParams?.RA_MAINFAN2_Y ? bodyParams.RA_MAINFAN2_Y : "")
+        setData("RA_MAINFAN2_B", bodyParams?.RA_MAINFAN2_B ? bodyParams.RA_MAINFAN2_B : "")
+
+		setHTML("MAIN_FAN_3_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.RA_MAINFAN3 && bodyParams?.RA_MAINFAN3 === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("RA_MAINFAN3_R", bodyParams?.RA_MAINFAN3_R ? bodyParams.RA_MAINFAN3_R : "")
+        setData("RA_MAINFAN3_Y", bodyParams?.RA_MAINFAN3_Y ? bodyParams.RA_MAINFAN3_Y : "")
+        setData("RA_MAINFAN3_B", bodyParams?.RA_MAINFAN3_B ? bodyParams.RA_MAINFAN3_B : "")
+
+		// setHTML("MAIN_FAN_4_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.RA_MAINFAN4 ? 'black' : '#c8ccc9'};">NA</span>`)
+        // setData("RA_MAINFAN4_R", bodyParams?.RA_MAINFAN4_R ? bodyParams.RA_MAINFAN4_R : "")
+        // setData("RA_MAINFAN4_Y", bodyParams?.RA_MAINFAN4_Y ? bodyParams.RA_MAINFAN4_Y : "")
+        // setData("RA_MAINFAN4_B", bodyParams?.RA_MAINFAN4_B ? bodyParams.RA_MAINFAN4_B : "")
+        // // COMPRESSERS
+		setHTML("COMPRESSOR_1_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.RA_COMPRESSOR1 && bodyParams?.RA_COMPRESSOR1 === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("RA_COMPRESSOR1_R", bodyParams?.RA_COMPRESSOR1_R ? bodyParams.RA_COMPRESSOR1_R : "")
+        setData("RA_COMPRESSOR1_Y", bodyParams?.RA_COMPRESSOR1_Y ? bodyParams.RA_COMPRESSOR1_Y : "")
+        setData("RA_COMPRESSOR1_B", bodyParams?.RA_COMPRESSOR1_B ? bodyParams.RA_COMPRESSOR1_B : "")
+
+		setHTML("COMPRESSOR_2_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.RA_COMPRESSOR2 && bodyParams?.RA_COMPRESSOR2 === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("RA_COMPRESSOR2_R", bodyParams?.RA_COMPRESSOR2_R ? bodyParams.RA_COMPRESSOR2_R : "")
+        setData("RA_COMPRESSOR2_Y", bodyParams?.RA_COMPRESSOR2_Y ? bodyParams.RA_COMPRESSOR2_Y : "")
+        setData("RA_COMPRESSOR2_B", bodyParams?.RA_COMPRESSOR2_B ? bodyParams.RA_COMPRESSOR2_B : "")
+
+		setHTML("COMPRESSOR_3_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.RA_COMPRESSOR3 && bodyParams?.RA_COMPRESSOR3 === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("RA_COMPRESSOR3_R", bodyParams?.RA_COMPRESSOR3_R ? bodyParams.RA_COMPRESSOR3_R : "")
+        setData("RA_COMPRESSOR3_Y", bodyParams?.RA_COMPRESSOR3_Y ? bodyParams.RA_COMPRESSOR3_Y : "")
+        setData("RA_COMPRESSOR3_B", bodyParams?.RA_COMPRESSOR3_B ? bodyParams.RA_COMPRESSOR3_B : "")
+
+		setHTML("COMPRESSOR_4_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.RA_COMPRESSOR4 && bodyParams?.RA_COMPRESSOR4 === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("RA_COMPRESSOR4_R", bodyParams?.RA_COMPRESSOR4_R ? bodyParams.RA_COMPRESSOR4_R : "")
+        setData("RA_COMPRESSOR4_Y", bodyParams?.RA_COMPRESSOR4_Y ? bodyParams.RA_COMPRESSOR4_Y : "")
+        setData("RA_COMPRESSOR4_B", bodyParams?.RA_COMPRESSOR4_B ? bodyParams.RA_COMPRESSOR4_B : "")
+        
+        // Humidifier
+		setHTML("HUMIDIFIER_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.RA_HUMIDIFIER && bodyParams?.RA_HUMIDIFIER === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("RA_HUMIDIFIER_R", bodyParams?.RA_HUMIDIFIER_R ? bodyParams.RA_HUMIDIFIER_R : "")
+        setData("RA_HUMIDIFIER_Y", bodyParams?.RA_HUMIDIFIER_Y ? bodyParams.RA_HUMIDIFIER_Y : "")
+        setData("RA_HUMIDIFIER_B", bodyParams?.RA_HUMIDIFIER_B ? bodyParams.RA_HUMIDIFIER_B : "")
+
+        // Heater
+		setHTML("HEATER_1_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.RA_HEATER1 && bodyParams?.RA_HEATER1 === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("RA_HEATER1_R", bodyParams?.RA_HEATER1_R ? bodyParams.RA_HEATER1_R : "")
+        setData("RA_HEATER1_Y", bodyParams?.RA_HEATER1_Y ? bodyParams.RA_HEATER1_Y : "")
+        setData("RA_HEATER1_B", bodyParams?.RA_HEATER1_B ? bodyParams.RA_HEATER1_B : "")
+
+        // Condenser fans
+		setHTML("CONDENSER_FAN_1_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.RA_CONDENSERFAN1 && bodyParams?.RA_CONDENSERFAN1 === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("RA_CONDENSERFAN1_R", bodyParams?.RA_CONDENSERFAN1_R ? bodyParams.RA_CONDENSERFAN1_R : "")
+        setData("RA_CONDENSERFAN1_Y", bodyParams?.RA_CONDENSERFAN1_Y ? bodyParams.RA_CONDENSERFAN1_Y : "")
+        setData("RA_CONDENSERFAN1_B", bodyParams?.RA_CONDENSERFAN1_B ? bodyParams.RA_CONDENSERFAN1_B : "")
+
+		setHTML("CONDENSER_FAN_2_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.RA_CONDENSERFAN2 && bodyParams?.RA_CONDENSERFAN2 === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("RA_CONDENSERFAN2_R", bodyParams?.RA_CONDENSERFAN2_R ? bodyParams.RA_CONDENSERFAN2_R : "")
+        setData("RA_CONDENSERFAN2_Y", bodyParams?.RA_CONDENSERFAN2_Y ? bodyParams.RA_CONDENSERFAN2_Y : "")
+        setData("RA_CONDENSERFAN2_B", bodyParams?.RA_CONDENSERFAN2_B ? bodyParams.RA_CONDENSERFAN2_B : "")
+
+		setHTML("CONDENSER_FAN_3_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.RA_CONDENSERFAN3 && bodyParams?.RA_CONDENSERFAN3 === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("RA_CONDENSERFAN3_R", bodyParams?.RA_CONDENSERFAN3_R ? bodyParams.RA_CONDENSERFAN3_R : "")
+        setData("RA_CONDENSERFAN3_Y", bodyParams?.RA_CONDENSERFAN3_Y ? bodyParams.RA_CONDENSERFAN3_Y : "")
+        setData("RA_CONDENSERFAN3_B", bodyParams?.RA_CONDENSERFAN3_B ? bodyParams.RA_CONDENSERFAN3_B : "")
+
+        // AIR FILTER
+        setData("AF_FILTERS_INPLACE_STATUS_OK", bodyParams?.AF_FILTERS_INPLACE_STATUS && bodyParams?.AF_FILTERS_INPLACE_STATUS === 'YES'  ? bodyParams.AF_FILTERS_INPLACE_STATUS : "")
+        setData("AF_FILTERS_INPLACE_STATUS_NOT_OK", bodyParams?.AF_FILTERS_INPLACE_STATUS && bodyParams?.AF_FILTERS_INPLACE_STATUS === 'NO'  ?  bodyParams.AF_FILTERS_INPLACE_STATUS : "")
+        setData("AF_FILTERS_INPLACE_SPECIFY", bodyParams?.AF_FILTERS_INPLACE_SPECIFY ? bodyParams.AF_FILTERS_INPLACE_SPECIFY : "")
+
+        setData("AF_FILTERCONDITION_STATUS_OK", bodyParams?.AF_FILTERCONDITION_STATUS && bodyParams?.AF_FILTERCONDITION_STATUS === 'OK'  ? bodyParams.AF_FILTERCONDITION_STATUS : "")
+        setData("AF_FILTERCONDITION_STATUS_NOT_OK", bodyParams?.AF_FILTERCONDITION_STATUS && bodyParams?.AF_FILTERCONDITION_STATUS === 'NOT_OK'  ?  "NOT OK" : "")
+        setData("AF_FILTERCONDITION_SPECIFY", bodyParams?.AF_FILTERCONDITION_SPECIFY ? bodyParams.AF_FILTERS_INPLACE_SPECIFY : "")
+
+        setData("AF_WIPESECTIONCLEAN_STATUS_OK", bodyParams?.AF_WIPESECTIONCLEAN_STATUS && bodyParams?.AF_WIPESECTIONCLEAN_STATUS === 'YES'  ? bodyParams.AF_WIPESECTIONCLEAN_STATUS : "")
+        setData("AF_WIPESECTIONCLEAN_STATUS_NOT_OK", bodyParams?.AF_WIPESECTIONCLEAN_STATUS && bodyParams?.AF_WIPESECTIONCLEAN_STATUS === 'NO'  ?  bodyParams.AF_WIPESECTIONCLEAN_STATUS : "")
+        setData("AF_WIPESECTIONCLEAN_SPECIFY", bodyParams?.AF_WIPESECTIONCLEAN_SPECIFY ? bodyParams.AF_WIPESECTIONCLEAN_SPECIFY : "")
+
+        // REHEAT
+        setData("RH_HEATERELEMENT_STATUS_OK", bodyParams?.RH_HEATERELEMENT_STATUS && bodyParams?.RH_HEATERELEMENT_STATUS === 'OK'  ? bodyParams.RH_HEATERELEMENT_STATUS : "")
+        setData("RH_HEATERELEMENT_STATUS_NOT_OK", bodyParams?.RH_HEATERELEMENT_STATUS && bodyParams?.RH_HEATERELEMENT_STATUS === 'NOT_OK'  ?  "NOT OK" : "")
+		setHTML("RH_HEATERELEMENT_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.RH_HEATERELEMENT_STATUS && bodyParams?.RH_HEATERELEMENT_STATUS === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("RH_HEATERELEMENT_SPECIFY", bodyParams?.RH_HEATERELEMENT_SPECIFY ? bodyParams.RH_HEATERELEMENT_SPECIFY : "")
+
+        setData("RH_WIRINGCONNECTIONS_STATUS_OK", bodyParams?.RH_WIRINGCONNECTIONS_STATUS && bodyParams?.RH_WIRINGCONNECTIONS_STATUS === 'OK'  ? bodyParams.RH_WIRINGCONNECTIONS_STATUS : "")
+        setData("RH_WIRINGCONNECTIONS_STATUS_NOT_OK", bodyParams?.RH_WIRINGCONNECTIONS_STATUS && bodyParams?.RH_WIRINGCONNECTIONS_STATUS === 'NOT_OK'  ?  "NOT OK" : "")
+		setHTML("RH_WIRINGCONNECTIONS_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.RH_WIRINGCONNECTIONS_STATUS && bodyParams?.RH_WIRINGCONNECTIONS_STATUS === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("RH_WIRINGCONNECTIONS_SPECIFY", bodyParams?.RH_WIRINGCONNECTIONS_SPECIFY ? bodyParams.RH_WIRINGCONNECTIONS_SPECIFY : "")
+
+        setData("RH_CONTACTOR_SAFETYSWITCH_STATUS_OK", bodyParams?.RH_CONTACTOR_SAFETYSWITCH_STATUS && bodyParams?.RH_CONTACTOR_SAFETYSWITCH_STATUS === 'OK'  ? bodyParams.RH_CONTACTOR_SAFETYSWITCH_STATUS : "")
+        setData("RH_CONTACTOR_SAFETYSWITCH_STATUS_NOT_OK", bodyParams?.RH_CONTACTOR_SAFETYSWITCH_STATUS && bodyParams?.RH_CONTACTOR_SAFETYSWITCH_STATUS === 'NOT_OK'  ?  "NOT OK" : "")
+		setHTML("RH_CONTACTOR_SAFETYSWITCH_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.RH_CONTACTOR_SAFETYSWITCH_STATUS && bodyParams?.RH_CONTACTOR_SAFETYSWITCH_STATUS === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("RH_CONTACTOR_SAFETYSWITCH_SPECIFY", bodyParams?.RH_CONTACTOR_SAFETYSWITCH_SPECIFY ? bodyParams.RH_CONTACTOR_SAFETYSWITCH_SPECIFY : "")
+
+        // WUF SENSOR
+        setData("WUF_SENSOR_CONNECTION_STATUS_OK", bodyParams?.WUF_SENSOR_CONNECTION_STATUS && bodyParams?.WUF_SENSOR_CONNECTION_STATUS === 'OK'  ? bodyParams.WUF_SENSOR_CONNECTION_STATUS : "")
+        setData("WUF_SENSOR_CONNECTION_STATUS_NOT_OK", bodyParams?.WUF_SENSOR_CONNECTION_STATUS && bodyParams?.WUF_SENSOR_CONNECTION_STATUS === 'NOT_OK'  ?  "NOT OK" : "")
+		setHTML("WUF_SENSOR_CONNECTION_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.WUF_SENSOR_CONNECTION_STATUS && bodyParams?.WUF_SENSOR_CONNECTION_STATUS === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("WUF_SENSOR_CONNECTION_SPECIFY", bodyParams?.WUF_SENSOR_CONNECTION_SPECIFY ? bodyParams.WUF_SENSOR_CONNECTION_SPECIFY : "")
+
+        setData("WUF_SENSOR_FUNCTIONTEST_STATUS_OK", bodyParams?.WUF_SENSOR_FUNCTIONTEST_STATUS && bodyParams?.WUF_SENSOR_FUNCTIONTEST_STATUS === 'OK'  ? bodyParams.WUF_SENSOR_FUNCTIONTEST_STATUS : "")
+        setData("WUF_SENSOR_FUNCTIONTEST_STATUS_NOT_OK", bodyParams?.WUF_SENSOR_FUNCTIONTEST_STATUS && bodyParams?.WUF_SENSOR_FUNCTIONTEST_STATUS === 'NOT_OK'  ?  "NOT OK" : "")
+		setHTML("WUF_SENSOR_FUNCTIONTEST_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.WUF_SENSOR_FUNCTIONTEST_STATUS && bodyParams?.WUF_SENSOR_FUNCTIONTEST_STATUS === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("WUF_SENSOR_FUNCTIONTEST_SPECIFY", bodyParams?.WUF_SENSOR_FUNCTIONTEST_SPECIFY ? bodyParams.WUF_SENSOR_FUNCTIONTEST_SPECIFY : "")
+
+        // REFIRIGIRATION SENSOR
+		setHTML("REFRIGERATION_CIRCUIT_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.REFRIGERATION_CYCLE && bodyParams?.REFRIGERATION_CYCLE === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+		setHTML("RC_NITROGEN_PRESSURE_C1_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.RC_NITROGEN_PRESSURE_TEST_C1 && bodyParams?.RC_NITROGEN_PRESSURE_TEST_C1 === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("RC_NITROGEN_PRESSURE_TEST_C1_INITIAL", bodyParams?.RC_NITROGEN_PRESSURE_TEST_C1_INITIAL ? bodyParams.RC_NITROGEN_PRESSURE_TEST_C1_INITIAL : "")
+        setData("RC_NITROGEN_PRESSURE_TEST_C1_INITIAL_UNIT", bodyParams?.RC_NITROGEN_PRESSURE_TEST_C1_INITIAL_ACTION ? bodyParams.RC_NITROGEN_PRESSURE_TEST_C1_INITIAL_ACTION : "")
+        setData("RC_NITROGEN_PRESSURE_TEST_C1_FINAL", bodyParams?.RC_NITROGEN_PRESSURE_TEST_C1_FINAL ? bodyParams.RC_NITROGEN_PRESSURE_TEST_C1_FINAL : "")
+        setData("RC_NITROGEN_PRESSURE_TEST_C1_FINAL_UNIT", bodyParams?.RC_NITROGEN_PRESSURE_TEST_C1_FINAL_ACTION ? bodyParams.RC_NITROGEN_PRESSURE_TEST_C1_FINAL_ACTION : "")
+
+		setHTML("RC_NITROGEN_PRESSURE_C2_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.RC_NITROGEN_PRESSURE_TEST_C2 && bodyParams?.RC_NITROGEN_PRESSURE_TEST_C2 === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("RC_NITROGEN_PRESSURE_TEST_C2_INITIAL", bodyParams?.RC_NITROGEN_PRESSURE_TEST_C2_INITIAL ? bodyParams.RC_NITROGEN_PRESSURE_TEST_C2_INITIAL : "")
+        setData("RC_NITROGEN_PRESSURE_TEST_C2_INITIAL_UNIT", bodyParams?.RC_NITROGEN_PRESSURE_TEST_C2_INITIAL_ACTION ? bodyParams.RC_NITROGEN_PRESSURE_TEST_C2_INITIAL_ACTION : "")
+        setData("RC_NITROGEN_PRESSURE_TEST_C2_FINAL", bodyParams?.RC_NITROGEN_PRESSURE_TEST_C2_FINAL ? bodyParams.RC_NITROGEN_PRESSURE_TEST_C2_FINAL : "")
+        setData("RC_NITROGEN_PRESSURE_TEST_C2_FINAL_UNIT", bodyParams?.RC_NITROGEN_PRESSURE_TEST_C2_FINAL_ACTION ? bodyParams.RC_NITROGEN_PRESSURE_TEST_C2_FINAL_ACTION : "")
+
+		setHTML("RC_NITROGEN_PRESSURE_C3_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.RC_NITROGEN_PRESSURE_TEST_C3 && bodyParams?.RC_NITROGEN_PRESSURE_TEST_C3 === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("RC_NITROGEN_PRESSURE_TEST_C3_INITIAL", bodyParams?.RC_NITROGEN_PRESSURE_TEST_C3_INITIAL ? bodyParams.RC_NITROGEN_PRESSURE_TEST_C3_INITIAL : "")
+        setData("RC_NITROGEN_PRESSURE_TEST_C3_INITIAL_UNIT", bodyParams?.RC_NITROGEN_PRESSURE_TEST_C3_INITIAL_ACTION ? bodyParams.RC_NITROGEN_PRESSURE_TEST_C3_INITIAL_ACTION : "")
+        setData("RC_NITROGEN_PRESSURE_TEST_C3_FINAL", bodyParams?.RC_NITROGEN_PRESSURE_TEST_C3_FINAL ? bodyParams.RC_NITROGEN_PRESSURE_TEST_C3_FINAL : "")
+        setData("RC_NITROGEN_PRESSURE_TEST_C3_FINAL_UNIT", bodyParams?.RC_NITROGEN_PRESSURE_TEST_C3_FINAL_ACTION ? bodyParams.RC_NITROGEN_PRESSURE_TEST_C3_FINAL_ACTION : "")
+
+		setHTML("RC_VACUUM_C1_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.RC_VACUUM_C1 && bodyParams?.RC_VACUUM_C1 === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("RC_VACUUM_C1_INITIAL", bodyParams?.RC_VACUUM_C1_INITIAL ? bodyParams.RC_VACUUM_C1_INITIAL : "")
+        setData("RC_VACUUM_C1_FINAL", bodyParams?.RC_VACUUM_C1_FINAL ? bodyParams.RC_VACUUM_C1_FINAL : "")
+		setHTML("RC_VACUUM_C2_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.RC_VACUUM_C2 && bodyParams?.RC_VACUUM_C2 === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("RC_VACUUM_C2_INITIAL", bodyParams?.RC_VACUUM_C2_INITIAL ? bodyParams.RC_VACUUM_C2_INITIAL : "")
+        setData("RC_VACUUM_C2_FINAL", bodyParams?.RC_VACUUM_C2_FINAL ? bodyParams.RC_VACUUM_C2_FINAL : "")
+		setHTML("RC_VACUUM_C3_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.RC_VACUUM_C3 && bodyParams?.RC_VACUUM_C3 === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("RC_VACUUM_C3_INITIAL", bodyParams?.RC_VACUUM_C3_INITIAL ? bodyParams.RC_VACUUM_C3_INITIAL : "")
+        setData("RC_VACUUM_C3_FINAL", bodyParams?.RC_VACUUM_C3_FINAL ? bodyParams.RC_VACUUM_C3_FINAL : "")
+
+		setHTML("RC_SUCTION_PRESSURE_C1_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.RC_SUCTION_PRESSURE_C1 && bodyParams?.RC_SUCTION_PRESSURE_C1 === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("RC_SUCTION_PRESSURE_C1_INITIAL", bodyParams?.RC_SUCTION_PRESSURE_C1_INITIAL ? bodyParams.RC_SUCTION_PRESSURE_C1_INITIAL : "")
+        setData("RC_SUCTION_PRESSURE_C1_INITIAL_UNIT", bodyParams?.RC_SUCTION_PRESSURE_C1_INITIAL_ACTION ? bodyParams.RC_SUCTION_PRESSURE_C1_INITIAL_ACTION : "")
+        setData("RC_SUCTION_PRESSURE_C1_FINAL", bodyParams?.RC_SUCTION_PRESSURE_C1_FINAL ? bodyParams.RC_SUCTION_PRESSURE_C1_FINAL : "")
+        setData("RC_SUCTION_PRESSURE_C1_FINAL_UNIT", bodyParams?.RC_SUCTION_PRESSURE_C1_FINAL_ACTION ? bodyParams.RC_SUCTION_PRESSURE_C1_FINAL_ACTION : "")
+		setHTML("RC_SUCTION_PRESSURE_C2_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.RC_SUCTION_PRESSURE_C2 && bodyParams?.RC_SUCTION_PRESSURE_C2 === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("RC_SUCTION_PRESSURE_C2_INITIAL", bodyParams?.RC_SUCTION_PRESSURE_C2_INITIAL ? bodyParams.RC_SUCTION_PRESSURE_C2_INITIAL : "")
+        setData("RC_SUCTION_PRESSURE_C2_INITIAL_UNIT", bodyParams?.RC_SUCTION_PRESSURE_C2_INITIAL_ACTION ? bodyParams.RC_SUCTION_PRESSURE_C2_INITIAL_ACTION : "")
+        setData("RC_SUCTION_PRESSURE_C2_FINAL", bodyParams?.RC_SUCTION_PRESSURE_C2_FINAL ? bodyParams.RC_SUCTION_PRESSURE_C2_FINAL : "")
+        setData("RC_SUCTION_PRESSURE_C2_FINAL_UNIT", bodyParams?.RC_SUCTION_PRESSURE_C2_FINAL_ACTION ? bodyParams.RC_SUCTION_PRESSURE_C2_FINAL_ACTION : "")
+		setHTML("RC_SUCTION_PRESSURE_C3_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.RC_SUCTION_PRESSURE_C3 && bodyParams?.RC_SUCTION_PRESSURE_C3 === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("RC_SUCTION_PRESSURE_C3_INITIAL", bodyParams?.RC_SUCTION_PRESSURE_C3_INITIAL ? bodyParams.RC_SUCTION_PRESSURE_C3_INITIAL : "")
+        setData("RC_SUCTION_PRESSURE_C3_INITIAL_UNIT", bodyParams?.RC_SUCTION_PRESSURE_C3_INITIAL_ACTION ? bodyParams.RC_SUCTION_PRESSURE_C3_INITIAL_ACTION : "")
+        setData("RC_SUCTION_PRESSURE_C3_FINAL", bodyParams?.RC_SUCTION_PRESSURE_C3_FINAL ? bodyParams.RC_SUCTION_PRESSURE_C3_FINAL : "")
+        setData("RC_SUCTION_PRESSURE_C3_FINAL_UNIT", bodyParams?.RC_SUCTION_PRESSURE_C3_FINAL_ACTION ? bodyParams.RC_SUCTION_PRESSURE_C3_FINAL_ACTION : "")
+
+        setData("RC_PIPING_RUBBING_STATUS_OK", bodyParams?.RC_PIPING_RUBBING_STATUS && bodyParams?.RC_PIPING_RUBBING_STATUS === 'YES'  ? bodyParams.RC_PIPING_RUBBING_STATUS : "")
+        setData("RC_PIPING_RUBBING_STATUS_NOT_OK", bodyParams?.RC_PIPING_RUBBING_STATUS && bodyParams?.RC_PIPING_RUBBING_STATUS === 'NO'  ?  bodyParams.RC_PIPING_RUBBING_STATUS : "")
+        setData("RC_PIPING_RUBBING_SPECIFY", bodyParams?.RC_PIPING_RUBBING_SPECIFY ? bodyParams.RC_PIPING_RUBBING_SPECIFY : "")
+
+        setData("RC_PIPING_VIBRATION_STATUS_OK", bodyParams?.RC_PIPING_VIBRATION_STATUS && bodyParams?.RC_PIPING_VIBRATION_STATUS === 'YES'  ? bodyParams.RC_PIPING_VIBRATION_STATUS : "")
+        setData("RC_PIPING_VIBRATION_STATUS_NOT_OK", bodyParams?.RC_PIPING_VIBRATION_STATUS && bodyParams?.RC_PIPING_VIBRATION_STATUS === 'NO'  ?  bodyParams.RC_PIPING_VIBRATION_STATUS : "")
+        setData("RC_PIPING_VIBRATION_SPECIFY", bodyParams?.RC_PIPING_VIBRATION_SPECIFY ? bodyParams.RC_PIPING_VIBRATION_SPECIFY : "")
+
+        setData("RC_PAC_ENTERING_AIR", bodyParams?.RC_PAC_ENTERING_AIR ? bodyParams.RC_PAC_ENTERING_AIR : "")
+        setData("RC_PAC_LEAVING_AIR", bodyParams?.RC_PAC_LEAVING_AIR ? bodyParams.RC_PAC_LEAVING_AIR : "")
+
+        setData("RC_EVAP_COIL_CLEAN_STATUS_OK", bodyParams?.RC_EVAP_COIL_CLEAN_STATUS && bodyParams?.RC_EVAP_COIL_CLEAN_STATUS === 'YES'  ? bodyParams.RC_EVAP_COIL_CLEAN_STATUS : "")
+        setData("RC_EVAP_COIL_CLEAN_STATUS_NOT_OK", bodyParams?.RC_EVAP_COIL_CLEAN_STATUS && bodyParams?.RC_EVAP_COIL_CLEAN_STATUS === 'NO'  ?  bodyParams.RC_EVAP_COIL_CLEAN_STATUS : "")
+        setData("RC_EVAP_COIL_CLEAN_SPECIFY", bodyParams?.RC_EVAP_COIL_CLEAN_SPECIFY ? bodyParams.RC_EVAP_COIL_CLEAN_SPECIFY : "")
+
+        setData("RC_COLD_AIR_SHORT_CYCLE_STATUS_OK", bodyParams?.RC_COLD_AIR_SHORT_CYCLE_STATUS && bodyParams?.RC_COLD_AIR_SHORT_CYCLE_STATUS === 'YES'  ? bodyParams.RC_COLD_AIR_SHORT_CYCLE_STATUS : "")
+        setData("RC_COLD_AIR_SHORT_CYCLE_STATUS_NOT_OK", bodyParams?.RC_COLD_AIR_SHORT_CYCLE_STATUS && bodyParams?.RC_COLD_AIR_SHORT_CYCLE_STATUS === 'NO'  ?  bodyParams.RC_COLD_AIR_SHORT_CYCLE_STATUS : "")
+        setData("RC_COLD_AIR_SHORT_CYCLE_SPECIFY", bodyParams?.RC_COLD_AIR_SHORT_CYCLE_SPECIFY ? bodyParams.RC_COLD_AIR_SHORT_CYCLE_SPECIFY : "")
+
+        // ELECTRONIC CONTROL SECTION
+        setData("ECS_CLEAN_INTERNAL_PANEL_STATUS_OK", bodyParams?.ECS_CLEAN_INTERNAL_PANEL_STATUS && bodyParams?.ECS_CLEAN_INTERNAL_PANEL_STATUS === 'YES'  ? bodyParams.ECS_CLEAN_INTERNAL_PANEL_STATUS : "")
+        setData("ECS_CLEAN_INTERNAL_PANEL_STATUS_NOT_OK", bodyParams?.ECS_CLEAN_INTERNAL_PANEL_STATUS && bodyParams?.ECS_CLEAN_INTERNAL_PANEL_STATUS === 'NO'  ?  bodyParams.ECS_CLEAN_INTERNAL_PANEL_STATUS : "")
+		setHTML("ECS_CLEAN_INTERNAL_PANEL_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.ECS_CLEAN_INTERNAL_PANEL_STATUS && bodyParams?.ECS_CLEAN_INTERNAL_PANEL_STATUS === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("ECS_CLEAN_INTERNAL_PANEL_SPECIFY", bodyParams?.ECS_CLEAN_INTERNAL_PANEL_SPECIFY ? bodyParams.ECS_CLEAN_INTERNAL_PANEL_SPECIFY : "")
+
+        setData("ECS_RUN_PANEL_CONTROL_SEQUENCE_STATUS_OK", bodyParams?.ECS_RUN_PANEL_CONTROL_SEQUENCE_STATUS && bodyParams?.ECS_RUN_PANEL_CONTROL_SEQUENCE_STATUS === 'YES'  ? bodyParams.ECS_RUN_PANEL_CONTROL_SEQUENCE_STATUS : "")
+        setData("ECS_RUN_PANEL_CONTROL_SEQUENCE_STATUS_NOT_OK", bodyParams?.ECS_RUN_PANEL_CONTROL_SEQUENCE_STATUS && bodyParams?.ECS_RUN_PANEL_CONTROL_SEQUENCE_STATUS === 'NO'  ?  bodyParams.ECS_RUN_PANEL_CONTROL_SEQUENCE_STATUS : "")
+		setHTML("ECS_RUN_PANEL_CONTROL_SEQUENCE_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.ECS_RUN_PANEL_CONTROL_SEQUENCE_STATUS && bodyParams?.ECS_RUN_PANEL_CONTROL_SEQUENCE_STATUS === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("ECS_RUN_PANEL_CONTROL_SEQUENCE_SPECIFY", bodyParams?.ECS_RUN_PANEL_CONTROL_SEQUENCE_SPECIFY ? bodyParams.ECS_RUN_PANEL_CONTROL_SEQUENCE_SPECIFY : "")
+
+        setData("ECS_CHECK_ALARMS_STATUS_OK", bodyParams?.ECS_CHECK_ALARMS_STATUS && bodyParams?.ECS_CHECK_ALARMS_STATUS === 'OK'  ? bodyParams.ECS_CHECK_ALARMS_STATUS : "")
+        setData("ECS_CHECK_ALARMS_STATUS_NOT_OK", bodyParams?.ECS_CHECK_ALARMS_STATUS && bodyParams?.ECS_CHECK_ALARMS_STATUS === 'NOT_OK'  ?  "NOT OK" : "")
+		setHTML("ECS_CHECK_ALARMS__NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.ECS_CHECK_ALARMS_STATUS && bodyParams?.ECS_CHECK_ALARMS_STATUS === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("ECS_CHECK_ALARMS_SPECIFY", bodyParams?.ECS_CHECK_ALARMS_SPECIFY ? bodyParams.ECS_CHECK_ALARMS_SPECIFY : "")
+
+		setHTML("HUMIDIFIER_SECTION_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.HUMIDIFIER_SECTION && bodyParams?.HUMIDIFIER_SECTION === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+
+        setData("ECS_CHECK_BURNT_ELEMENTS_STATUS_OK", bodyParams?.ECS_CHECK_BURNT_ELEMENTS_STATUS && bodyParams?.ECS_CHECK_BURNT_ELEMENTS_STATUS === 'YES'  ? bodyParams.ECS_CHECK_BURNT_ELEMENTS_STATUS : "")
+        setData("ECS_CHECK_BURNT_ELEMENTS_STATUS_NOT_OK", bodyParams?.ECS_CHECK_BURNT_ELEMENTS_STATUS && bodyParams?.ECS_CHECK_BURNT_ELEMENTS_STATUS === 'NO'  ?  bodyParams.ECS_CHECK_BURNT_ELEMENTS_STATUS : "")
+		setHTML("ECS_CHECK_BURNT_ELEMENTS_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.ECS_CHECK_BURNT_ELEMENTS_STATUS && bodyParams?.ECS_CHECK_BURNT_ELEMENTS_STATUS === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("ECS_CHECK_BURNT_ELEMENTS_SPECIFY", bodyParams?.ECS_CHECK_BURNT_ELEMENTS_SPECIFY ? bodyParams.ECS_CHECK_BURNT_ELEMENTS_SPECIFY : "")
+
+        setData("ECS_CLEAN_HUMIDIFIER_TRAY_STATUS_OK", bodyParams?.ECS_CLEAN_HUMIDIFIER_TRAY_STATUS && bodyParams?.ECS_CLEAN_HUMIDIFIER_TRAY_STATUS === 'YES'  ? bodyParams.ECS_CLEAN_HUMIDIFIER_TRAY_STATUS : "")
+        setData("ECS_CLEAN_HUMIDIFIER_TRAY_STATUS_NOT_OK", bodyParams?.ECS_CLEAN_HUMIDIFIER_TRAY_STATUS && bodyParams?.ECS_CLEAN_HUMIDIFIER_TRAY_STATUS === 'NO'  ?  bodyParams.ECS_CLEAN_HUMIDIFIER_TRAY_STATUS : "")
+		setHTML("ECS_CLEAN_HUMIDIFIER_TRAY_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.ECS_CLEAN_HUMIDIFIER_TRAY_STATUS && bodyParams?.ECS_CLEAN_HUMIDIFIER_TRAY_STATUS === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("ECS_CLEAN_HUMIDIFIER_TRAY_SPECIFY", bodyParams?.ECS_CLEAN_HUMIDIFIER_TRAY_SPECIFY ? bodyParams.ECS_CLEAN_HUMIDIFIER_TRAY_SPECIFY : "")
+
+        setData("ECS_BACK_FLUSH_STATUS_OK", bodyParams?.ECS_BACK_FLUSH_STATUS && bodyParams?.ECS_BACK_FLUSH_STATUS === 'OK'  ? bodyParams.ECS_BACK_FLUSH_STATUS : "")
+        setData("ECS_BACK_FLUSH_STATUS_NOT_OK", bodyParams?.ECS_BACK_FLUSH_STATUS && bodyParams?.ECS_BACK_FLUSH_STATUS === 'NOT_OK'  ?  "NOT OK" : "")
+		setHTML("ECS_BACK_FLUSH_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.ECS_BACK_FLUSH_STATUS && bodyParams?.ECS_BACK_FLUSH_STATUS === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("ECS_BACK_FLUSH_SPECIFY", bodyParams?.ECS_BACK_FLUSH_SPECIFY ? bodyParams.ECS_BACK_FLUSH_SPECIFY : "")
+
+        setData("ECS_WATER_INLET_OUTLET_STATUS_OK", bodyParams?.ECS_WATER_INLET_OUTLET && bodyParams?.ECS_WATER_INLET_OUTLET === 'OK'  ? bodyParams.ECS_WATER_INLET_OUTLET : "")
+        setData("ECS_WATER_INLET_OUTLET_STATUS_NOT_OK", bodyParams?.ECS_WATER_INLET_OUTLET && bodyParams?.ECS_WATER_INLET_OUTLET === 'NOT_OK'  ?  "NOT OK" : "")
+		setHTML("ECS_WATER_INLET_OUTLET_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.ECS_WATER_INLET_OUTLET && bodyParams?.ECS_WATER_INLET_OUTLET === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("ECS_WATER_INLET_OUTLET_SPECIFY", bodyParams?.ECS_WATER_INLET_OUTLET_SPECIFY ? bodyParams.ECS_WATER_INLET_OUTLET_SPECIFY : "")
+
+        // AIR COOLED CONDENSER
+		setHTML("AIR_COOLED_CONDENSER_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.AIR_COOLED_CONDENSER && bodyParams?.AIR_COOLED_CONDENSER === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("ACC_MODEL", bodyParams?.ACC_MODEL ? bodyParams.ACC_MODEL : "")
+
+        setData("ACC_CLEANLINESS_COILFINS_STATUS_OK", bodyParams?.ACC_CLEANLINESS_COILFINS_STATUS && bodyParams?.ACC_CLEANLINESS_COILFINS_STATUS === 'OK'  ? bodyParams.ACC_CLEANLINESS_COILFINS_STATUS : "")
+        setData("ACC_CLEANLINESS_COILFINS_STATUS_NOT_OK", bodyParams?.ACC_CLEANLINESS_COILFINS_STATUS && bodyParams?.ACC_CLEANLINESS_COILFINS_STATUS === 'NOT_OK'  ?  "NOT OK" : "")
+		setHTML("ACC_CLEANLINESS_COILFINS_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.ACC_CLEANLINESS_COILFINS_STATUS && bodyParams?.ACC_CLEANLINESS_COILFINS_STATUS === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("ACC_CLEANLINESS_COILFINS_SPECIFY", bodyParams?.ACC_CLEANLINESS_COILFINS_SPECIFY ? bodyParams.ACC_CLEANLINESS_COILFINS_SPECIFY : "")
+
+        setData("ACC_MOTOR_MOUNT_TIGHT_STATUS_OK", bodyParams?.ACC_MOTOR_MOUNT_TIGHT_STATUS && bodyParams?.ACC_MOTOR_MOUNT_TIGHT_STATUS === 'OK'  ? bodyParams.ACC_MOTOR_MOUNT_TIGHT_STATUS : "")
+        setData("ACC_MOTOR_MOUNT_TIGHT_STATUS_NOT_OK", bodyParams?.ACC_MOTOR_MOUNT_TIGHT_STATUS && bodyParams?.ACC_MOTOR_MOUNT_TIGHT_STATUS === 'NOT_OK'  ?  "NOT OK" : "")
+		setHTML("ACC_MOTOR_MOUNT_TIGHT_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.ACC_MOTOR_MOUNT_TIGHT_STATUS && bodyParams?.ACC_MOTOR_MOUNT_TIGHT_STATUS === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("ACC_MOTOR_MOUNT_TIGHT_SPECIFY", bodyParams?.ACC_MOTOR_MOUNT_TIGHT_SPECIFY ? bodyParams.ACC_MOTOR_MOUNT_TIGHT_SPECIFY : "")
+
+        setData("ACC_FREE_ROTATION_BEARINGS_STATUS_OK", bodyParams?.ACC_FREE_ROTATION_BEARINGS_STATUS && bodyParams?.ACC_FREE_ROTATION_BEARINGS_STATUS === 'OK'  ? bodyParams.ACC_FREE_ROTATION_BEARINGS_STATUS : "")
+        setData("ACC_FREE_ROTATION_BEARINGS_STATUS_NOT_OK", bodyParams?.ACC_FREE_ROTATION_BEARINGS_STATUS && bodyParams?.ACC_FREE_ROTATION_BEARINGS_STATUS === 'NOT_OK'  ?  "NOT OK" : "")
+		setHTML("ACC_FREE_ROTATION_BEARINGS_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.ACC_FREE_ROTATION_BEARINGS_STATUS && bodyParams?.ACC_FREE_ROTATION_BEARINGS_STATUS === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("ACC_FREE_ROTATION_BEARINGS_SPECIFY", bodyParams?.ACC_FREE_ROTATION_BEARINGS_SPECIFY ? bodyParams.ACC_FREE_ROTATION_BEARINGS_SPECIFY : "")
+
+        setData("ACC_FAN_MOUNTING_STATUS_OK", bodyParams?.ACC_FAN_MOUNTING_STATUS && bodyParams?.ACC_FAN_MOUNTING_STATUS === 'OK'  ? bodyParams.ACC_FAN_MOUNTING_STATUS : "")
+        setData("ACC_FAN_MOUNTING_STATUS_NOT_OK", bodyParams?.ACC_FAN_MOUNTING_STATUS && bodyParams?.ACC_FAN_MOUNTING_STATUS === 'NOT_OK'  ?  "NOT OK" : "")
+		setHTML("ACC_FAN_MOUNTING_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.ACC_FAN_MOUNTING_STATUS && bodyParams?.ACC_FAN_MOUNTING_STATUS === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("ACC_FAN_MOUNTING_SPECIFY", bodyParams?.ACC_FAN_MOUNTING_SPECIFY ? bodyParams.ACC_FAN_MOUNTING_SPECIFY : "")
+
+        setData("ACC_DEBRIS_FREE_SURROUNDING_STATUS_OK", bodyParams?.ACC_DEBRIS_FREE_SURROUNDING_STATUS && bodyParams?.ACC_DEBRIS_FREE_SURROUNDING_STATUS === 'YES'  ? bodyParams.ACC_DEBRIS_FREE_SURROUNDING_STATUS : "")
+        setData("ACC_DEBRIS_FREE_SURROUNDING_STATUS_NOT_OK", bodyParams?.ACC_DEBRIS_FREE_SURROUNDING_STATUS && bodyParams?.ACC_DEBRIS_FREE_SURROUNDING_STATUS === 'NO'  ?  bodyParams.ACC_DEBRIS_FREE_SURROUNDING_STATUS : "")
+		setHTML("ACC_DEBRIS_FREE_SURROUNDING_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.ACC_DEBRIS_FREE_SURROUNDING_STATUS && bodyParams?.ACC_DEBRIS_FREE_SURROUNDING_STATUS === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("ACC_DEBRIS_FREE_SURROUNDING_SPECIFY", bodyParams?.ACC_DEBRIS_FREE_SURROUNDING_SPECIFY ? bodyParams.ACC_DEBRIS_FREE_SURROUNDING_SPECIFY : "")
+
+        setData("ACC_HOT_AIR_SHORT_CYCLE_STATUS_OK", bodyParams?.ACC_HOT_AIR_SHORT_CYCLE_STATUS && bodyParams?.ACC_HOT_AIR_SHORT_CYCLE_STATUS === 'YES'  ? bodyParams.ACC_HOT_AIR_SHORT_CYCLE_STATUS : "")
+        setData("ACC_HOT_AIR_SHORT_CYCLE_STATUS_NOT_OK", bodyParams?.ACC_HOT_AIR_SHORT_CYCLE_STATUS && bodyParams?.ACC_HOT_AIR_SHORT_CYCLE_STATUS === 'NO'  ?  bodyParams.ACC_HOT_AIR_SHORT_CYCLE_STATUS : "")
+		setHTML("ACC_HOT_AIR_SHORT_CYCLE_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.ACC_HOT_AIR_SHORT_CYCLE_STATUS && bodyParams?.ACC_HOT_AIR_SHORT_CYCLE_STATUS === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("ACC_HOT_AIR_SHORT_CYCLE_SPECIFY", bodyParams?.ACC_HOT_AIR_SHORT_CYCLE_SPECIFY ? bodyParams.ACC_HOT_AIR_SHORT_CYCLE_SPECIFY : "")
+
+        setData("ACC_OIL_GAS_LEAK_STATUS_OK", bodyParams?.ACC_OIL_GAS_LEAK_STATUS && bodyParams?.ACC_OIL_GAS_LEAK_STATUS === 'YES'  ? bodyParams.ACC_OIL_GAS_LEAK_STATUS : "")
+        setData("ACC_OIL_GAS_LEAK_STATUS_NOT_OK", bodyParams?.ACC_OIL_GAS_LEAK_STATUS && bodyParams?.ACC_OIL_GAS_LEAK_STATUS === 'NO'  ?  bodyParams.ACC_OIL_GAS_LEAK_STATUS : "")
+		setHTML("ACC_OIL_GAS_LEAK_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.ACC_OIL_GAS_LEAK_STATUS && bodyParams?.ACC_OIL_GAS_LEAK_STATUS === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("ACC_OIL_GAS_LEAK_SPECIFY", bodyParams?.ACC_OIL_GAS_LEAK_SPECIFY ? bodyParams.ACC_OIL_GAS_LEAK_SPECIFY : "")
+
+        setData("ACC_COIL_FINS_CONDITION_STATUS_OK", bodyParams?.ACC_COIL_FINS_CONDITION_STATUS && bodyParams?.ACC_COIL_FINS_CONDITION_STATUS === 'OK'  ? bodyParams.ACC_COIL_FINS_CONDITION_STATUS : "")
+        setData("ACC_COIL_FINS_CONDITION_STATUS_NOT_OK", bodyParams?.ACC_COIL_FINS_CONDITION_STATUS && bodyParams?.ACC_COIL_FINS_CONDITION_STATUS === 'NOT_OK'  ?  "NOT OK" : "")
+		setHTML("ACC_COIL_FINS_CONDITION_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.ACC_COIL_FINS_CONDITION_STATUS && bodyParams?.ACC_COIL_FINS_CONDITION_STATUS === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("ACC_COIL_FINS_CONDITION_SPECIFY", bodyParams?.ACC_COIL_FINS_CONDITION_SPECIFY ? bodyParams.ACC_COIL_FINS_CONDITION_SPECIFY : "")
+
+        // CHILLED WATER UNIT
+        setData("CWU_INLET_WATER_TEMPERATURE", bodyParams?.CWU_INLET_WATER_TEMPERATURE && bodyParams?.CWU_INLET_WATER_TEMPERATURE !== 'NOT_APPLICABLE' ? bodyParams.CWU_INLET_WATER_TEMPERATURE : "")
+		setHTML("CWU_INLET_WATER_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.CWU_INLET_WATER_TEMPERATURE && bodyParams?.CWU_INLET_WATER_TEMPERATURE === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("CWU_OUTLET_WATER_TEMPERATURE", bodyParams?.CWU_OUTLET_WATER_TEMPERATURE && bodyParams?.CWU_OUTLET_WATER_TEMPERATURE !== 'NOT_APPLICABLE'  ? bodyParams.CWU_OUTLET_WATER_TEMPERATURE : "")
+		setHTML("CWU_OUTLET_WATER_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.CWU_OUTLET_WATER_TEMPERATURE && bodyParams?.CWU_OUTLET_WATER_TEMPERATURE === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("CWU_INLET_PRESSURE", bodyParams?.CWU_INLET_PRESSURE && bodyParams?.CWU_INLET_PRESSURE !== 'NOT_APPLICABLE'  ? bodyParams.CWU_INLET_PRESSURE : "")
+		setHTML("CWU_INLET_PRESSURE_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.CWU_INLET_PRESSURE && bodyParams?.CWU_INLET_PRESSURE === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("CWU_INLET_PRESSURE_UNIT", bodyParams?.CWU_INLET_PRESSURE_ACTION ? bodyParams.CWU_INLET_PRESSURE_ACTION : "")
+        setData("CWU_OUTLET_PRESSURE", bodyParams?.CWU_OUTLET_PRESSURE && bodyParams?.CWU_OUTLET_PRESSURE !== 'NOT_APPLICABLE'  ? bodyParams.CWU_OUTLET_PRESSURE : "")
+		setHTML("CWU_OUTLET_PRESSURE_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.CWU_OUTLET_PRESSURE && bodyParams?.CWU_OUTLET_PRESSURE === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("CWU_OUTLET_PRESSURE_UNIT", bodyParams?.CWU_OUTLET_PRESSURE_ACTION ? bodyParams.CWU_OUTLET_PRESSURE_ACTION : "")
+
+        setData("CWU_BMS_COMMUNICATION_STATUS_OK", bodyParams?.CWU_BMS_COMMUNICATION_STATUS && bodyParams?.CWU_BMS_COMMUNICATION_STATUS === 'OK'  ? bodyParams.CWU_BMS_COMMUNICATION_STATUS : "")
+        setData("CWU_BMS_COMMUNICATION_STATUS_NOT_OK", bodyParams?.CWU_BMS_COMMUNICATION_STATUS && bodyParams?.CWU_BMS_COMMUNICATION_STATUS === 'NOT_OK'  ?  "NOT OK" : "")
+		setHTML("CWU_BMS_COMMUNICATION_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.CWU_BMS_COMMUNICATION_STATUS && bodyParams?.CWU_BMS_COMMUNICATION_STATUS === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("CWU_BMS_COMMUNICATION_SPECIFY", bodyParams?.CWU_BMS_COMMUNICATION_SPECIFY ? bodyParams.CWU_BMS_COMMUNICATION_SPECIFY : "")
+
+        setData("CWU_DATE_TIME_STATUS_OK", bodyParams?.CWU_DATE_TIME_STATUS && bodyParams?.CWU_DATE_TIME_STATUS === 'OK'  ? bodyParams.CWU_DATE_TIME_STATUS : "")
+        setData("CWU_DATE_TIME_STATUS_NOT_OK", bodyParams?.CWU_DATE_TIME_STATUS && bodyParams?.CWU_DATE_TIME_STATUS === 'NOT_OK'  ?  "NOT OK" : "")
+		// setHTML("CWU_DATE_TIME_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.CWU_DATE_TIME_STATUS && bodyParams?.CWU_DATE_TIME_STATUS === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setData("CWU_DATE_TIME_SPECIFY", bodyParams?.CWU_DATE_TIME_SPECIFY ? bodyParams.CWU_DATE_TIME_SPECIFY : "")
+
+        setData("CWU_CE_NAME", bodyParams?.CWU_CE_NAME ? bodyParams.CWU_CE_NAME : "")
+        setData("CWU_CE_REMARK", bodyParams?.CWU_CE_REMARK ? bodyParams.CWU_CE_REMARK : "")
+
+		setHTML("REFRIGIRATION_GAS_NA", `<span style="width: 100%; height: 100%; text-align: center; color: ${bodyParams?.RC_REFRIGERANT_PRESSURE && bodyParams?.RC_REFRIGERANT_PRESSURE === 'NOT_APPLICABLE' ? 'black' : '#c8ccc9'};">NA</span>`)
+        setHTML("R_22", `<span style="text-align: center; color: ${bodyParams?.RC_REFRIGERANT_PRESSURE && bodyParams?.RC_REFRIGERANT_PRESSURE === 'R_22' ? 'black' : '#c8ccc9'};">R 22</span>`)
+        setHTML("R_407_C", `<span style="text-align: center; color: ${bodyParams?.RC_REFRIGERANT_PRESSURE && bodyParams?.RC_REFRIGERANT_PRESSURE === 'R_407C' ? 'black' : '#c8ccc9'};">R 407 C</span>`)
+        setHTML("R_410_A", `<span style="text-align: center; color: ${bodyParams?.RC_REFRIGERANT_PRESSURE && bodyParams?.RC_REFRIGERANT_PRESSURE === 'R_410A' ? 'black' : '#c8ccc9'};">R 410 A</span>`)
+    }, bodyParams);
+
+    return await page.pdf({
+        margin: {
+            top: '5mm',
+            right: '5mm',
+            bottom: '11mm',
+            left: '5mm',
+        },
+        format: 'A4',
+		displayHeaderFooter: true,
+        footerTemplate: '<div style="font-size: 10px; font-weight: bold; text-align: center; margin-left: 45%;">Page <span class="pageNumber"></span> of 3</div>',
+        format: 'A4',
+        printBackground: true,
+    });
+}
+
 // Generate OnePM FSR Master Report
 const generateOnePMFSR = async (page, finalObject, totalPageNumber) => {
 	await page.evaluate(({ finalObject, totalPageNumber }) => {
@@ -1232,6 +2023,22 @@ const generateOnePMFSRChild = async (page, finalObject, pageNumber, totalPageNum
 
 }
 
+function generateDCPSAlarmStatus(statusData) {
+    let status = {};
+
+    statusData.forEach((item, i) => {
+        status[`title${i + 1}`] = item.title || "-";
+        status[`status${i + 1}_OK`] = item.value === "OK" ? "OK" : "";
+        status[`status${i + 1}_NOT_OK`] = item.value === "NOT_OK" ? "NOT OK" : "";
+    });
+
+    return status;
+}
+
+const logo =
+	'data:image/png;base64,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KcEBwLejQ4iIiIiISHVUcgXdzNYAbgRWDY4iUqYNW63Wsu12++roICIiIiIiEq9yDbqZrUbWnOuZc+kHb2m1Wou22+1Z0UFERERERCRWpRp0M3spcAOwVnQWkYQ2a7Vas9vt9i3RQUREREREJE5lGnQzezFZc96KziISYKtWq/Vou93+SXQQERERERGJUYkG3cyWIWvO14/OIhJoaqvVurvdbv8iOoiIiIiIiKQXPgfdzCYBlwHbR2cRqYDZwHbufkN0EBERERERSasKY9a+ippzkUGTgZn5mEEREREREekjoQ26mb0PeH9kBpEKWg64zMyWiw4iIiIiIiLphG1xN7OpwOVU5Dl4kQq6Htje3WdHBxERERERkfKFrKCb2brAD1BzLjKWrYGTokOIiIiIiEgayRtkM1uR7MT2l6SuLVJDG7ZarYfa7fZt0UFERERERKRcSbe45ye2zwI2T1lXpObmAFPd/froICIiIiIiUp7UW9w/jZpzkW5NAs4wsxdHBxERERERkfIkW0E3sy2B66jGaDeROroS2NHd50UHERERERGR4iVplvPnzs9MVU+koaYBR0aHEBERERGRcpS+gm5mE4DLgB3KriXSB54FNnb3X0QHERERERGRYqVY0T4KNeciRVkUONfMlooOIiIiIiIixSq1QTezNwKfL7OGSB9aG/hmdAgRERERESlWaXPQzWxJskPhdPK0SPFe22q1/txut38THURERERERIpR5gr68cArS7y+SL/7Wn4Ao4iIiIiINEApDXq+tf3wMq4tIs9bATgxOoSIiIiIiBSj8FPczWwScDvw+qKvLSIj2tbdr4sOISIiIiIi41PGCvpRqDkXSenbZjYlOoSIiIiIiIxPoQ26mb0COK7Ia4rIQr0S+FR0CBERERERGZ+iV9C/BSxR8DVFZOE+ZGbrR4cQEREREZHeFdagm9k+wLSiriciXVkE+J6ZFX6uhIiIiIiIpFFIg25mSwFfKeJaItKzjYGDokOIiIiIiEhvilpB/xCwckHXEpHeHWdmi0eHEBERERGR7o27QTezlYAPFpBFRMZvFeCI6BAiIiIiItK9IlbQPwksVcB1RKQYx5jZctEhRERERESkO+Nq0M1sTeDQgrKISDGWBT4WHUJERERERLoz3hX0E8hOjxaRanm/ma0WHUJERERERDrXc4NuZm8A9iowi4gU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';
+
+
 module.exports = {
   generatePartReturnedAndConsumedTable,
   generateSafetyTable,
@@ -1244,6 +2051,9 @@ module.exports = {
   generateProductsCoveredTable,
   mergePDFs,
   generateOnePMFSR,
-  generateOnePMFSRChild
+  generateOnePMFSRChild,
+  generateDpgPDF,
+  generateDcpsPDF,
+  generateThermalPDF
 };
 
