@@ -179,7 +179,7 @@ function generateSafetyTable(formdata) {
 async function generateThermalOrPowerReport(page, finalObject) {
   const headerTemplate = 
 		`<div style="display: flex; justify-content: space-between; align-items: center; width: 100%">
-      <div style="font-size: 21px; font-family: TimesBold; margin-left: 30px; margin-top: 5px;">Field Service Report</div>
+			<div style="font-size: 21px; font-family: TimesBold; margin-left: 30px; margin-top: 5px;">Field Service Report</div>
 			<div style="display: flex; padding: 0.5rem; margin-right: 30px; margin-top: 10px;">
 				<img
 					height="30px"

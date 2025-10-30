@@ -27,7 +27,6 @@ class TemplateLoader {
       try {
         if (fs.existsSync(templatePath)) {
           this.templates[templateName] = fs.readFileSync(templatePath, 'utf8');
-          console.log(`Loaded template: ${templateName}`);
         } else {
           console.warn(`Template file not found: ${templatePath}`);
         }
@@ -41,6 +40,7 @@ class TemplateLoader {
     if (!this.templates[templateName]) {
       throw new Error(`Template ${templateName} not found. Available templates: ${Object.keys(this.templates).join(', ')}`);
     }
+    console.log(`Loaded template: ${templateName}`);
     return this.templates[templateName];
   }
 

@@ -149,6 +149,13 @@
 				font-size: 10px;
 				font-family: TimesBold;
 			}
+			.one_line {
+				text-overflow: ellipsis; 
+				display: -webkit-box; 
+				-webkit-line-clamp: 1;
+				-webkit-box-orient: vertical;
+				overflow: hidden;
+			}
 		</style>
 	</head>
 	<body>
@@ -275,7 +282,7 @@
 			<tr>
 				<td colspan="3" style="padding: unset;">
 					<div style="width: 100%; display: flex;">
-						<div style="width: 50%; padding: 0.2rem; border-right: 1px solid black;">
+						<div style="width: 50%; padding: 0.2rem; border-right: 1px solid black;" class="one_line">
 							<span class="times-bold">Problem statement:</span> <span id="problemStatement"></span>
 						</div>
 						<div style="width: 50%; padding: 0.2rem; ">
