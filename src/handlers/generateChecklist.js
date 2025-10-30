@@ -85,6 +85,7 @@ module.exports.handler = async (event) => {
             page,
             {
               ...body,
+              ...(params || {}),
               engineerSignature,
               customerSignature,
               ...(params?.form_data && Array.isArray(params.form_data) && params.form_data[0] ? params.form_data[0] : {}),
